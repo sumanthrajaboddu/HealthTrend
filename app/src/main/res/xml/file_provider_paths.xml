@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    FileProvider paths for secure file sharing (Story 6.1 Task 5).
+    PDF reports saved to context.cacheDir/reports/ subdirectory.
+-->
+<paths>
+    <cache-path
+        name="reports"
+        path="reports/" />
+</paths>
