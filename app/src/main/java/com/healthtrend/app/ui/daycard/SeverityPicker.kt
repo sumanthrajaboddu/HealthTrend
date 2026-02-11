@@ -12,10 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.SentimentNeutral
-import androidx.compose.material.icons.filled.SentimentSatisfied
-import androidx.compose.material.icons.filled.SentimentVeryDissatisfied
-import androidx.compose.material.icons.filled.SentimentVerySatisfied
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -25,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -36,17 +31,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.healthtrend.app.data.model.Severity
-
-/**
- * Maps Severity to a descriptive icon (UI-layer extension).
- * Shared with TimeSlotTile — declared internal to the package.
- */
-internal fun Severity.icon(): ImageVector = when (this) {
-    Severity.NO_PAIN -> Icons.Filled.SentimentVerySatisfied
-    Severity.MILD -> Icons.Filled.SentimentSatisfied
-    Severity.MODERATE -> Icons.Filled.SentimentNeutral
-    Severity.SEVERE -> Icons.Filled.SentimentVeryDissatisfied
-}
 
 /**
  * Inline severity picker — NOT a modal, NOT a bottom sheet.
@@ -95,7 +79,7 @@ fun SeverityPicker(
         // Severity options — distributed evenly
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Severity.entries.forEach { severity ->
@@ -132,7 +116,7 @@ private fun SeverityOption(
     Card(
         onClick = onClick,
         modifier = modifier
-            .size(width = 72.dp, height = 72.dp)
+            .size(width = 64.dp, height = 64.dp)
             .semantics(mergeDescendants = true) {
                 contentDescription = a11yDescription
                 role = Role.Button
@@ -156,7 +140,7 @@ private fun SeverityOption(
             verticalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = severity.icon(),
+                imageVector = severity.icon,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint = severity.color

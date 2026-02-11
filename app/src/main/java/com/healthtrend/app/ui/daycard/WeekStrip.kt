@@ -30,9 +30,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.healthtrend.app.data.model.Severity
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -60,67 +62,75 @@ fun WeekStrip(
 ) {
     val weekDays = DatePagerUtils.weekDays(selectedDate)
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Left arrow — previous week
-        IconButton(
-            onClick = { onNavigateWeek(false) },
-            modifier = Modifier
-                .size(48.dp)
-                .semantics {
-                    contentDescription = "Previous week"
-                    role = Role.Button
-                }
+        // Week navigation arrows — separate row to preserve 44dp day cell widths on small screens.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            IconButton(
+                onClick = { onNavigateWeek(false) },
+                modifier = Modifier
+                    .size(48.dp)
+                    .semantics {
+                        contentDescription = "Previous week"
+                        role = Role.Button
+                        traversalIndex = 0f
+                    }
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(
+                onClick = { onNavigateWeek(true) },
+                enabled = canNavigateForward,
+                modifier = Modifier
+                    .size(48.dp)
+                    .semantics {
+                        contentDescription = "Next week"
+                        role = Role.Button
+                        traversalIndex = 8f
+                    }
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = if (canNavigateForward) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                    }
+                )
+            }
         }
 
         // 7 day cells — evenly distributed
         Row(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            weekDays.forEach { date ->
+            weekDays.forEachIndexed { index, date ->
                 DayCell(
                     date = date,
                     isSelected = date == selectedDate,
                     isToday = date == today,
                     hasData = date in datesWithData,
                     isFuture = date.isAfter(today),
-                    onClick = { onDaySelected(date) }
+                    onClick = { onDaySelected(date) },
+                    traversalIndex = (index + 1).toFloat()
                 )
             }
-        }
-
-        // Right arrow — next week (disabled when at latest week)
-        IconButton(
-            onClick = { onNavigateWeek(true) },
-            enabled = canNavigateForward,
-            modifier = Modifier
-                .size(48.dp)
-                .semantics {
-                    contentDescription = "Next week"
-                    role = Role.Button
-                }
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = if (canNavigateForward) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                }
-            )
         }
     }
 }
@@ -148,6 +158,7 @@ private fun DayCell(
     hasData: Boolean,
     isFuture: Boolean,
     onClick: () -> Unit,
+    traversalIndex: Float,
     modifier: Modifier = Modifier
 ) {
     // Build TalkBack description (AC #6)
@@ -193,10 +204,13 @@ private fun DayCell(
             )
             .semantics(mergeDescendants = true) {
                 contentDescription = a11yDescription
-                role = Role.Button
+                if (!isFuture) {
+                    role = Role.Button
+                }
                 if (a11yState.isNotEmpty()) {
                     stateDescription = a11yState
                 }
+                this.traversalIndex = traversalIndex
             }
     ) {
         // Day abbreviation
@@ -253,7 +267,7 @@ private fun DayCell(
                 modifier = Modifier
                     .size(4.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(Severity.NO_PAIN.color)
                     .clearAndSetSemantics { }
             )
         } else {
@@ -278,7 +292,11 @@ private fun buildDayCellSemantics(
         DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.getDefault())
     )
     val todayPart = if (isToday) ", today" else ""
-    val dataPart = if (hasData) ", has data" else ""
+    val dataPart = when {
+        isFuture -> ", future date"
+        hasData -> ", has data"
+        else -> ", no data"
+    }
     val actionPart = if (isFuture) "" else ". Double tap to view."
 
     return "$fullDate$todayPart$dataPart$actionPart"

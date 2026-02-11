@@ -126,7 +126,11 @@ fun TimeSlotTile(
                     imageVector = timeSlot.icon,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = if (isLogged) entry!!.severity.color else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (isCurrentTimeSlot) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
@@ -189,7 +193,7 @@ private fun SeverityIndicator(
         modifier = modifier.clearAndSetSemantics { }
     ) {
         Icon(
-            imageVector = severity.icon(),
+            imageVector = severity.icon,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
             tint = severity.color

@@ -35,7 +35,7 @@ interface ReminderScheduler {
  */
 @Singleton
 class NotificationScheduler @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : ReminderScheduler {
 
     private val alarmManager: AlarmManager =

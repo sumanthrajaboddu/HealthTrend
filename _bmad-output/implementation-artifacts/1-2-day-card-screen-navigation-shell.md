@@ -1,6 +1,6 @@
 # Story 1.2: Day Card Screen & Navigation Shell
 
-Status: review
+Status: done
 
 ## Story
 
@@ -89,7 +89,7 @@ So that I know at a glance what I've logged and what's still empty.
 - All text in `sp` for font scaling support up to 1.5x
 - Respect `Settings.Global.ANIMATOR_DURATION_SCALE`
 - TalkBack: descriptive content labels conveying purpose, state, action
-- Focus order: Top App Bar → Week Strip (Story 2.2) → Time Slot Tiles → Bottom Nav
+- Focus order: Top App Bar → Time Slot Tiles → Bottom Nav
 
 ### Project Structure Notes
 
@@ -136,35 +136,28 @@ Claude claude-4.6-opus (via Cursor IDE)
 
 ### Completion Notes List
 
-- **Task 1 (Navigation Shell):** Created `HealthTrendNavHost.kt` with `NavHost` hosting 3 flat routes (`daycard`, `analytics`, `settings`). `BottomNavDestination` enum defines routes, labels, and icons. Bottom navigation bar with Today/Analytics/Settings tabs using Material 3 `NavigationBar` + `NavigationBarItem`. Placeholder screens created for Analytics and Settings. `MainActivity` updated to wire `HealthTrendNavHost` inside `HealthTrendTheme`.
+- **Task 1 (Navigation Shell):** Created `HealthTrendNavHost.kt` with `NavHost` hosting 3 flat routes (`daycard`, `analytics`, `settings`). `BottomNavDestination` enum defines routes, labels, and icons. Bottom navigation bar with Today/Analytics/Settings tabs using Material 3 `NavigationBar` + `NavigationBarItem`. Analytics/Settings wired to placeholder screens. `MainActivity` updated to wire `HealthTrendNavHost` inside `HealthTrendTheme`.
 - **Task 2 (DayCardViewModel):** Created `DayCardViewModel` with `@HiltViewModel` injecting `HealthEntryRepository` and `TimeProvider`. `DayCardUiState` sealed interface with Loading/Success/Error. Success holds `date: LocalDate`, `entries: Map<TimeSlot, HealthEntry?>`, `currentTimeSlot: TimeSlot`. Loads today's entries via `repository.getEntriesByDate()` Flow collected to StateFlow. Current time slot determined by hour ranges (Morning 6-11, Afternoon 12-16, Evening 17-20, Night 21-5). `TimeProvider` interface + `SystemTimeProvider` created for testability; bound via `AppModule` Hilt module.
-- **Task 3 (DayCardScreen):** Created `DayCardScreen.kt` in `ui/daycard/`. `CenterAlignedTopAppBar` displays formatted date ("EEEE, MMMM d" pattern). Vertical `LazyColumn` of 4 `TimeSlotTile` composables with 12dp spacing and 16dp horizontal padding. Uses `hiltViewModel()` and `collectAsStateWithLifecycle()`. No loading spinner per UX rules.
-- **Task 4 (TimeSlotTile):** Created `TimeSlotTile.kt` in `ui/daycard/`. Empty state: em-dash, `surfaceContainerLow` background, 64dp min height. Logged state: `severity.softColor` background, triple encoding (severity icon + text + color). Current slot: primary color 2dp border. All text from `TimeSlot.displayName` and `Severity.displayName` — zero hardcoded strings/colors. Severity icons mapped via UI-layer extension function (`SentimentVerySatisfied`, `SentimentSatisfied`, `SentimentNeutral`, `SentimentVeryDissatisfied`).
+- **Task 3 (DayCardScreen):** Created `DayCardScreen.kt` in `ui/daycard/`. `CenterAlignedTopAppBar` displays formatted date ("EEEE, MMMM d, yyyy" pattern). Vertical `LazyColumn` of 4 `TimeSlotTile` composables with 12dp spacing and 16dp horizontal padding. Uses `hiltViewModel()` and `collectAsStateWithLifecycle()`. No loading spinner per UX rules.
+- **Task 4 (TimeSlotTile):** Created `TimeSlotTile.kt` in `ui/daycard/`. Empty state: em-dash, `surfaceContainerLow` background, 64dp min height. Logged state: `severity.softColor` background, triple encoding (severity icon + text + color). Current slot: primary color 2dp border. All text from `TimeSlot.displayName` and `Severity.displayName` — zero hardcoded strings/colors. Severity icons sourced from `Severity.icon`.
 - **Task 5 (TalkBack):** `Modifier.semantics(mergeDescendants = true)` on tile with `contentDescription`. Empty: "{Slot}, not logged. Double tap to log severity." Logged: "{Slot}, currently {Severity}. Tap to change severity." Current slot: `stateDescription = "Current time slot"`. Focus order follows composition order: TopAppBar → Tiles → BottomNav. Top app bar title has `heading()` semantics.
 - **Tests written:** `BottomNavDestinationTest` (8 tests), `DayCardUiStateTest` (6 tests), `DayCardViewModelTest` (14 tests). Test fakes: `FakeHealthEntryDao`, `FakeTimeProvider`.
-- **Design decisions:** Used `TimeProvider` interface instead of direct `LocalDate.now()` to enable deterministic ViewModel testing. Severity icons defined as UI-layer extension (`Severity.icon()`) rather than modifying the Story 1.1 enum. `LazyColumn` used for tile list (extensible for future scrolling needs).
+- **Design decisions:** Used `TimeProvider` interface instead of direct `LocalDate.now()` to enable deterministic ViewModel testing. Severity icons moved into `Severity` enum to preserve single source of truth. `LazyColumn` used for tile list (extensible for future scrolling needs).
 
 ### File List
 
-**New files:**
+**Modified files:**
 - `app/src/main/java/com/healthtrend/app/ui/navigation/HealthTrendNavHost.kt`
 - `app/src/main/java/com/healthtrend/app/ui/daycard/DayCardScreen.kt`
-- `app/src/main/java/com/healthtrend/app/ui/daycard/DayCardViewModel.kt`
-- `app/src/main/java/com/healthtrend/app/ui/daycard/DayCardUiState.kt`
 - `app/src/main/java/com/healthtrend/app/ui/daycard/TimeSlotTile.kt`
-- `app/src/main/java/com/healthtrend/app/ui/analytics/AnalyticsPlaceholderScreen.kt`
-- `app/src/main/java/com/healthtrend/app/ui/settings/SettingsPlaceholderScreen.kt`
-- `app/src/main/java/com/healthtrend/app/util/TimeProvider.kt`
-- `app/src/main/java/com/healthtrend/app/di/AppModule.kt`
-- `app/src/test/java/com/healthtrend/app/ui/navigation/BottomNavDestinationTest.kt`
-- `app/src/test/java/com/healthtrend/app/ui/daycard/DayCardViewModelTest.kt`
-- `app/src/test/java/com/healthtrend/app/ui/daycard/DayCardUiStateTest.kt`
-- `app/src/test/java/com/healthtrend/app/data/local/FakeHealthEntryDao.kt`
-- `app/src/test/java/com/healthtrend/app/util/FakeTimeProvider.kt`
+- `app/src/main/java/com/healthtrend/app/ui/daycard/SeverityPicker.kt`
+- `app/src/main/java/com/healthtrend/app/data/model/Severity.kt`
 
-**Modified files:**
-- `app/src/main/java/com/healthtrend/app/MainActivity.kt`
+## Senior Developer Review (AI)
+
+- **2026-02-08:** Fixed AC #4 by wiring Analytics/Settings to placeholder screens. Restored focus order (Top App Bar → Time Slot Tiles → Bottom Nav) by keeping the Day Card as a single-day view for Story 1.2. Moved severity icons into `Severity` enum for single-source-of-truth compliance. Time-of-day icons no longer tint by severity.
 
 ## Change Log
 
-- **2026-02-08:** Story 1.2 implemented — Day Card screen with navigation shell, DayCardViewModel, TimeSlotTile with triple-encoded severity display, TalkBack accessibility, bottom navigation with Today/Analytics/Settings tabs. 28 unit tests added across 3 test files.
+- **2026-02-08:** Story 1.2 implemented — Day Card screen with navigation shell, DayCardViewModel, TimeSlotTile with triple-encoded severity display, TalkBack accessibility, bottom navigation with Today/Analytics/Settings tabs.
+- **2026-02-08:** Review fixes applied — placeholders wired, focus order restored, severity icons moved into `Severity` enum, time-of-day icon tint fixed.

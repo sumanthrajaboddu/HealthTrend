@@ -26,9 +26,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.healthtrend.app.ui.analytics.AnalyticsScreen
+import com.healthtrend.app.ui.analytics.AnalyticsPlaceholderScreen
 import com.healthtrend.app.ui.daycard.DayCardScreen
-import com.healthtrend.app.ui.settings.SettingsScreen
+import com.healthtrend.app.ui.settings.SettingsPlaceholderScreen
 
 /**
  * Bottom navigation destinations.
@@ -65,7 +65,7 @@ enum class BottomNavDestination(
  * Three flat routes: daycard, analytics, settings.
  *
  * Supports "Today" tab re-tap: when the Today tab is already selected and tapped again,
- * the Day Card pager animates back to today's date (AC #4).
+ * a trigger is emitted for future day navigation behavior.
  */
 @Composable
 fun HealthTrendNavHost(
@@ -93,10 +93,10 @@ fun HealthTrendNavHost(
                 DayCardScreen(scrollToTodayTrigger = scrollToTodayTrigger)
             }
             composable(BottomNavDestination.ANALYTICS.route) {
-                AnalyticsScreen()
+                AnalyticsPlaceholderScreen()
             }
             composable(BottomNavDestination.SETTINGS.route) {
-                SettingsScreen()
+                SettingsPlaceholderScreen()
             }
         }
     }
@@ -106,7 +106,7 @@ fun HealthTrendNavHost(
  * Bottom navigation bar with Today, Analytics, Settings tabs.
  *
  * @param onTodayReselected Callback invoked when the "Today" tab is tapped while already selected.
- *   Used to trigger pager scroll-to-today in DayCardScreen (AC #4).
+ *   Reserved for future day navigation behavior (AC #4).
  */
 @Composable
 private fun HealthTrendBottomBar(

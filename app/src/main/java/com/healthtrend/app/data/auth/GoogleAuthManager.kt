@@ -40,7 +40,7 @@ interface GoogleAuthClient {
  */
 @Singleton
 class GoogleAuthManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : GoogleAuthClient {
 
     private val credentialManager = CredentialManager.create(context)

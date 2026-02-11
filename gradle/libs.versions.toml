@@ -23,6 +23,7 @@ googleHttpClientGson = "1.45.3"
 workManager = "2.11.1"
 hiltWork = "1.3.0"
 vico = "2.4.3"
+material = "1.12.0"
 
 [libraries]
 # Compose (versions managed by BOM — never specify individual versions)
@@ -88,6 +89,9 @@ google-http-client-gson = { group = "com.google.http-client", name = "google-htt
 # WorkManager
 work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
 work-testing = { group = "androidx.work", name = "work-testing", version.ref = "workManager" }
+
+# Material Components (for XML theme)
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 # Vico Charts (Material 3)
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }

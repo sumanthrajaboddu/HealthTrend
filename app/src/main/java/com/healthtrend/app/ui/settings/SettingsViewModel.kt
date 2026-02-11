@@ -49,6 +49,12 @@ class SettingsViewModel @Inject constructor(
     private val patientNameInput = MutableStateFlow<String?>(null)
 
     /**
+     * Immediate UI override for patient name input (debounced persistence).
+     * Allows UI to reflect typing instantly while saving occurs later.
+     */
+    private val patientNameOverride = MutableStateFlow<String?>(null)
+
+    /**
      * Auth state managed internally.
      * Derived from stored email + sign-in/out actions.
      */
@@ -66,6 +72,8 @@ class SettingsViewModel @Inject constructor(
             .onEach { name ->
                 if (name != null) {
                     appSettingsRepository.updatePatientName(name)
+                    // Clear override after persistence; repository flow will supply same value.
+                    patientNameOverride.value = null
                 }
             }
             .launchIn(viewModelScope)
@@ -77,8 +85,9 @@ class SettingsViewModel @Inject constructor(
      */
     val uiState: StateFlow<SettingsUiState> = combine(
         appSettingsRepository.getSettings(),
-        _authState
-    ) { settings, authState ->
+        _authState,
+        patientNameOverride
+    ) { settings, authState, nameOverride ->
         if (settings == null) {
             SettingsUiState.Loading
         } else {
@@ -90,7 +99,7 @@ class SettingsViewModel @Inject constructor(
             }
 
             SettingsUiState.Success(
-                patientName = settings.patientName,
+                patientName = nameOverride ?: settings.patientName,
                 sheetUrl = settings.sheetUrl,
                 isSheetUrlValid = settings.sheetUrl.isEmpty() || isValidSheetUrl(settings.sheetUrl),
                 authState = resolvedAuthState,
@@ -110,6 +119,7 @@ class SettingsViewModel @Inject constructor(
      * Debounced — persists after 500ms of no typing.
      */
     fun onPatientNameChanged(name: String) {
+        patientNameOverride.value = name
         patientNameInput.value = name
     }
 

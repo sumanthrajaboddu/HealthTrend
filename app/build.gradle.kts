@@ -11,7 +11,7 @@ plugins {
 
 android {
     namespace = "com.healthtrend.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.healthtrend.app"
@@ -42,6 +42,13 @@ android {
     buildFeatures {
         compose = true
     }
+
+    packaging {
+        resources {
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
+        }
+    }
 }
 
 room {
@@ -66,6 +73,9 @@ dependencies {
 
     // AndroidX Core
     implementation(libs.core.ktx)
+
+    // Material Components (XML themes)
+    implementation(libs.material)
 
     // Lifecycle
     implementation(libs.lifecycle.runtime.ktx)

@@ -297,6 +297,19 @@ class DayCardViewModelTest {
     }
 
     @Test
+    fun `onDateSelected clamps future date to today`() = runTest {
+        val today = LocalDate.of(2026, 2, 8)
+        val timeProvider = FakeTimeProvider(date = today, hour = 14)
+        val viewModel = DayCardViewModel(repository, timeProvider)
+
+        viewModel.onDateSelected(today.plusDays(1))
+
+        viewModel.selectedDate.test {
+            assertEquals(today, awaitItem())
+        }
+    }
+
+    @Test
     fun `onDateSelected with same date is no-op`() = runTest {
         val timeProvider = FakeTimeProvider(date = LocalDate.of(2026, 2, 8), hour = 14)
         val viewModel = DayCardViewModel(repository, timeProvider)

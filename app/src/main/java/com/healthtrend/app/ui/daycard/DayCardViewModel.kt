@@ -149,11 +149,12 @@ class DayCardViewModel @Inject constructor(
      * No-op if the date hasn't changed.
      */
     fun onDateSelected(date: LocalDate) {
-        if (date != _selectedDate.value) {
+        val cappedDate = if (date.isAfter(today)) today else date
+        if (cappedDate != _selectedDate.value) {
             _pickerOpenForSlot.value = null
             previousAllLogged = false
             pendingAllCompleteCheck = false
-            _selectedDate.value = date
+            _selectedDate.value = cappedDate
         }
     }
 

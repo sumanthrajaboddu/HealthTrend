@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Base application theme (used only for splash/startup; Compose handles the rest) -->
-    <style name="Theme.HealthTrend" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.HealthTrend" parent="Theme.Material3.Light.NoActionBar" />
 </resources>

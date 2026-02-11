@@ -28,7 +28,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class AndroidPdfGenerator @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : PdfGenerator {
 
     override fun generate(
@@ -294,10 +294,11 @@ class AndroidPdfGenerator @Inject constructor(
             CONTENT_WIDTH * 0.195f
         )
 
-        // Table header
+        // Table header (use TimeSlot display names — no hardcoded labels)
+        val headerCells = buildTableHeaderCells()
         y = drawTableRow(
             canvas, y, colWidths,
-            arrayOf("Date", "Morning", "Afternoon", "Evening", "Night"),
+            headerCells,
             isHeader = true
         )
 
@@ -320,7 +321,7 @@ class AndroidPdfGenerator @Inject constructor(
                 // Repeat table header on new page
                 y = drawTableRow(
                     canvas, y, colWidths,
-                    arrayOf("Date", "Morning", "Afternoon", "Evening", "Night"),
+                    headerCells,
                     isHeader = true
                 )
             }
@@ -398,6 +399,11 @@ class AndroidPdfGenerator @Inject constructor(
         canvas.drawLine(MARGIN, startY + ROW_HEIGHT, PAGE_WIDTH - MARGIN, startY + ROW_HEIGHT, gridPaint)
 
         return startY + ROW_HEIGHT
+    }
+
+    private fun buildTableHeaderCells(): Array<String> {
+        val slotLabels = TimeSlot.entries.map { it.displayName }
+        return (listOf("Date") + slotLabels).toTypedArray()
     }
 
     // =========================================================================

@@ -1,6 +1,6 @@
 # Story 2.1: Horizontal Day Pager & Date Navigation
 
-Status: review
+Status: done
 
 ## Story
 
@@ -123,6 +123,7 @@ claude-4.6-opus (Cursor IDE)
 - **Task 3 — Date header:** Header format changed to `EEEE, MMMM d, yyyy` (e.g., "Saturday, February 7, 2026"). Added `isToday` field to `DayCardUiState.Success`. Subtle color distinction: `onSurface` for today, `onSurfaceVariant` for past dates.
 - **Task 4 — Today tab:** Added `scrollToTodayTrigger` counter in `HealthTrendNavHost`. `HealthTrendBottomBar` accepts `onTodayReselected` callback — fires when Today tab is tapped while already selected. `DayCardScreen` tracks `lastProcessedTrigger` via `rememberSaveable` to prevent redundant animations on recomposition. Uses `pagerState.animateScrollToPage(TODAY_PAGE_INDEX)`.
 - **Task 5 — TalkBack:** `LaunchedEffect` observes `snapshotFlow { pagerState.settledPage }` with `.drop(1)` to skip initial page. Announces date in `EEEE, MMMM d` format (e.g., "Thursday, February 5") via `view.announceForAccessibility()`. Tap alternative deferred to Story 2.2 (week strip).
+- **Code Review Fixes (2026-02-09):** Implemented `HorizontalPager` in `DayCardScreen` with pager ↔ ViewModel sync, day swipe spec, TalkBack date announcements, and Today re-tap scroll. Clamped future dates in `DayCardViewModel`. Added unit test for future-date clamp.
 
 ### Decisions
 
@@ -149,3 +150,4 @@ claude-4.6-opus (Cursor IDE)
 ## Change Log
 
 - **2026-02-08:** Implemented Story 2.1 — Horizontal Day Pager & Date Navigation. Added HorizontalPager with date-offset index, multi-date ViewModel support via flatMapLatest, full date header display, Today tab re-tap scroll, and TalkBack announcements. 49 unit tests (12 DatePagerUtils + 28 ViewModel + 9 UiState).
+- **2026-02-09:** Code review fixes — wired HorizontalPager into DayCardScreen, added TalkBack date announcements, enforced future-date clamp in ViewModel, and added unit test coverage.

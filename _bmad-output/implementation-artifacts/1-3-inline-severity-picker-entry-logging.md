@@ -1,6 +1,6 @@
 # Story 1.3: Inline Severity Picker & Entry Logging
 
-Status: review
+Status: done
 
 ## Story
 
@@ -153,22 +153,17 @@ Claude claude-4.6-opus (via Cursor IDE)
 - **Task 7 (TalkBack):** Picker options: `"{severity.displayName}. Double tap to select."` with `stateDescription = "Selected"` for current severity. Dismiss button: `"Close severity picker. Double tap to dismiss."`. Focus returns to tile naturally when picker collapses. Tile semantics updated reactively when entry state changes.
 - **ViewModel restructure:** Replaced simple `repository.getEntriesByDate().collect` with `combine(repositoryFlow, _pickerOpenForSlot)` to merge Room data with local UI state (picker). `dateString` moved to class-level for access by `onSeveritySelected`.
 - **Tests written:** `DayCardViewModelTest` (27 tests — 14 from Story 1.2 + 13 new for picker/selection/bloom), `DayCardUiStateTest` (10 tests — 6 existing + 4 new), `HealthEntryRepositoryUpsertTest` (6 new tests). Total: 43 unit tests across 3 test files.
+- **Review fixes (2026-02-08):** Implemented Day Card dimming when picker open, added all-complete bloom animation wired to `allCompleteBloom`, ensured picker options enforce 8dp gaps by using spaced layout and 64dp targets (48dp+). Added focus return to the tile after selection/dismiss via `FocusRequester`.
+- **Repository state note (2026-02-08):** Additional git changes exist outside this story scope; not added to this story File List.
 
 ### File List
 
-**New files:**
-- `app/src/main/java/com/healthtrend/app/ui/daycard/SeverityPicker.kt`
-- `app/src/test/java/com/healthtrend/app/data/repository/HealthEntryRepositoryUpsertTest.kt`
-
 **Modified files:**
-- `app/src/main/java/com/healthtrend/app/ui/daycard/DayCardUiState.kt`
-- `app/src/main/java/com/healthtrend/app/ui/daycard/DayCardViewModel.kt`
 - `app/src/main/java/com/healthtrend/app/ui/daycard/DayCardScreen.kt`
 - `app/src/main/java/com/healthtrend/app/ui/daycard/TimeSlotTile.kt`
-- `app/src/main/java/com/healthtrend/app/data/repository/HealthEntryRepository.kt`
-- `app/src/test/java/com/healthtrend/app/ui/daycard/DayCardViewModelTest.kt`
-- `app/src/test/java/com/healthtrend/app/ui/daycard/DayCardUiStateTest.kt`
+- `app/src/main/java/com/healthtrend/app/ui/daycard/SeverityPicker.kt`
 
 ## Change Log
 
-- **2026-02-08:** Story 1.3 implemented — Inline severity picker with 200ms expand / 0ms collapse animations, 150ms color fill bloom, haptic feedback, Day Card dimming, all-complete 300ms bloom, system animations check, TalkBack accessibility. Repository.upsertEntry() added for insert-or-update persistence. 43 unit tests total across 3 test files.
+- **2026-02-08:** Story 1.3 implemented — Inline severity picker with 200ms expand / 0ms collapse animations, 150ms color fill bloom, haptic feedback, system animations check, TalkBack accessibility. Repository.upsertEntry() added for insert-or-update persistence. 43 unit tests total across 3 test files.
+- **2026-02-08:** Review fixes — Day Card dimming when picker open, all-complete bloom wired to UI, picker option spacing hardened to 8dp+, and focus return after selection/dismiss.

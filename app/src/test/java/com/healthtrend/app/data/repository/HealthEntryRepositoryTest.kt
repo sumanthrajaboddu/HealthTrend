@@ -106,6 +106,14 @@ class HealthEntryRepositoryTest {
         override fun getUnsyncedEntries(): Flow<List<HealthEntry>> =
             flowOf(entries.filter { !it.synced })
 
+        override fun getDistinctDatesBetween(startDate: String, endDate: String): Flow<List<String>> =
+            flowOf(
+                entries
+                    .filter { it.date in startDate..endDate }
+                    .map { it.date }
+                    .distinct()
+            )
+
         override suspend fun getEntry(date: String, timeSlot: String): HealthEntry? =
             entries.find { it.date == date && it.timeSlot.name == timeSlot }
 

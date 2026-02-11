@@ -18,7 +18,6 @@ class GoogleAuthManagerTest {
             email = "raja@example.com",
             idToken = "test-id-token-123"
         )
-        assertTrue(result is GoogleSignInResult.Success)
         assertEquals("raja@example.com", result.email)
         assertEquals("test-id-token-123", result.idToken)
     }
@@ -26,14 +25,13 @@ class GoogleAuthManagerTest {
     @Test
     fun `Failure result contains error message`() {
         val result = GoogleSignInResult.Failure("Network error")
-        assertTrue(result is GoogleSignInResult.Failure)
         assertEquals("Network error", result.message)
     }
 
     @Test
     fun `Cancelled is a valid result type`() {
         val result: GoogleSignInResult = GoogleSignInResult.Cancelled
-        assertTrue(result is GoogleSignInResult.Cancelled)
+        assertEquals(GoogleSignInResult.Cancelled, result)
     }
 
     @Test
