@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import com.healthtrend.app.data.model.AppSettings
 import com.healthtrend.app.data.model.TimeSlot
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -46,6 +47,8 @@ class NotificationScheduler @Inject constructor(
      * If the time has passed today, the alarm is set for tomorrow.
      */
     override fun scheduleAlarm(timeSlot: TimeSlot, hour: Int, minute: Int) {
+        if (!canScheduleExactAlarms()) return
+
         val alarmTime = LocalTime.of(hour, minute)
         val nextAlarm = calculateNextAlarmDateTime(alarmTime, LocalDateTime.now())
         val millis = nextAlarm.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -58,11 +61,15 @@ class NotificationScheduler @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            millis,
-            pendingIntent
-        )
+        try {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                millis,
+                pendingIntent
+            )
+        } catch (_: SecurityException) {
+            // Silent failure by design when exact alarm permission/capability is unavailable.
+        }
     }
 
     /**
@@ -115,6 +122,14 @@ class NotificationScheduler @Inject constructor(
             putExtra(EXTRA_TIME_SLOT, timeSlot.name)
             putExtra(EXTRA_ALARM_HOUR, hour)
             putExtra(EXTRA_ALARM_MINUTE, minute)
+        }
+    }
+
+    private fun canScheduleExactAlarms(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            alarmManager.canScheduleExactAlarms()
+        } else {
+            true
         }
     }
 

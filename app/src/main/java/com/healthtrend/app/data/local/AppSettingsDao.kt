@@ -56,4 +56,11 @@ interface AppSettingsDao {
      */
     @Query("SELECT * FROM app_settings WHERE id = 1 LIMIT 1")
     suspend fun getSettingsOnce(): AppSettings?
+
+    /**
+     * Synchronous one-shot query for lightweight boot-time receivers.
+     * Used from a background thread (never on main thread).
+     */
+    @Query("SELECT * FROM app_settings WHERE id = 1 LIMIT 1")
+    fun getSettingsNow(): AppSettings?
 }

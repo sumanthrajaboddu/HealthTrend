@@ -14,6 +14,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -26,9 +27,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.healthtrend.app.ui.analytics.AnalyticsPlaceholderScreen
+import com.healthtrend.app.ui.analytics.AnalyticsScreen
 import com.healthtrend.app.ui.daycard.DayCardScreen
-import com.healthtrend.app.ui.settings.SettingsPlaceholderScreen
+import com.healthtrend.app.ui.settings.SettingsScreen
 
 /**
  * Bottom navigation destinations.
@@ -70,6 +71,7 @@ enum class BottomNavDestination(
 @Composable
 fun HealthTrendNavHost(
     modifier: Modifier = Modifier,
+    openDayCardTrigger: Int = 0,
     navController: NavHostController = rememberNavController()
 ) {
     // Incrementing trigger: when Today tab is re-tapped while already selected,
@@ -84,6 +86,19 @@ fun HealthTrendNavHost(
             )
         }
     ) { innerPadding ->
+        LaunchedEffect(openDayCardTrigger) {
+            if (openDayCardTrigger > 0) {
+                navController.navigate(BottomNavDestination.TODAY.route) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+                scrollToTodayTrigger++
+            }
+        }
+
         NavHost(
             navController = navController,
             startDestination = BottomNavDestination.TODAY.route,
@@ -93,10 +108,10 @@ fun HealthTrendNavHost(
                 DayCardScreen(scrollToTodayTrigger = scrollToTodayTrigger)
             }
             composable(BottomNavDestination.ANALYTICS.route) {
-                AnalyticsPlaceholderScreen()
+                AnalyticsScreen()
             }
             composable(BottomNavDestination.SETTINGS.route) {
-                SettingsPlaceholderScreen()
+                SettingsScreen()
             }
         }
     }

@@ -1,6 +1,6 @@
 # Story 5.2: Time-of-Day Breakdown Cards
 
-Status: review
+Status: done
 
 ## Story
 
@@ -116,18 +116,42 @@ ui/analytics/
 claude-4.6-opus (Cursor IDE)
 
 ### Debug Log References
-- No gradle wrapper available in dev environment; tests written but need verification from Android Studio
+- `./gradlew :app:testDebugUnitTest --tests "com.healthtrend.app.ui.analytics.*"` (PASS)
+- `./gradlew :app:compileDebugAndroidTestKotlin` (PASS)
 
 ### Completion Notes List
 - **Task 1:** Added `calculateSlotAverages()` to `AnalyticsViewModel`. Groups entries by `TimeSlot`, computes mean of `severity.numericValue`, rounds via existing `numericToSeverity()` (same rounding as Story 5.1). Returns `Map<TimeSlot, Severity?>` — null for slots with zero entries. Added `slotAverages` field to `AnalyticsUiState.Success` (default = emptyMap for backward compat). Reactively recalculates via `flatMapLatest` on `selectedRange`. 7 new tests in `AnalyticsViewModelTest` + 2 new tests in `AnalyticsUiStateTest`.
-- **Task 2:** Created `TimeOfDayBreakdownCard.kt` — Material 3 Card with `Severity.softColor` background, `TimeSlot.icon` + `TimeSlot.displayName` label + `Severity.displayName` text + severity-tinted icon (triple encoding). Empty state shows "—" with neutral `onSurfaceVariant` styling. No hardcoded colors/labels.
-- **Task 3:** Created `TimeOfDayBreakdownSection` — 2x2 grid layout (two `Row`s with `weight(1f)` per card). 8dp spacing, 16dp horizontal padding. Placed below trend chart in `AnalyticsContent` with 24dp spacer.
-- **Task 4:** Card-level `semantics(mergeDescendants = true)` with `contentDescription`: "Morning average: Mild over 1 Week." for data cards, "Morning: No data for this period." for empty cards. Inner content uses `clearAndSetSemantics` to avoid TalkBack reading duplicate labels. Cards are large enough (12dp padding + content) for 48dp touch targets.
+- **Task 2:** Created `TimeOfDayBreakdownCard.kt` — Material 3 Card with `Severity.softColor` background, `TimeSlot.icon` + `TimeSlot.displayName` label + `Severity.displayName` text + `Severity.icon` indicator (triple encoding). Empty state shows "—" with neutral `onSurfaceVariant` styling. No hardcoded colors/labels.
+- **Task 3:** Created `TimeOfDayBreakdownSection` — 2x2 grid layout (two `Row`s with `weight(1f)` per card). 8dp spacing. Placed below trend chart in `AnalyticsContent` with 24dp spacer; section padding removed to preserve 16dp screen margins.
+- **Task 4:** Card-level `semantics(mergeDescendants = true)` with `contentDescription`: "Morning average: Mild over 7 days." for data cards, "Morning: No data for this period." for empty cards. Inner content uses `clearAndSetSemantics` to avoid TalkBack reading duplicate labels. Cards are large enough (12dp padding + content) for 48dp touch targets.
+- **Code Review Fixes:** Resolved Story 5.2 review findings by aligning TalkBack phrasing to day counts, using `Severity.icon` for average indicator, removing duplicated section horizontal padding, and adding Android Compose UI tests for breakdown card semantics/empty state/section rendering.
 
 ### File List
 - `app/src/main/java/com/healthtrend/app/ui/analytics/AnalyticsUiState.kt` — MODIFIED (added `slotAverages` field to Success, added TimeSlot import)
 - `app/src/main/java/com/healthtrend/app/ui/analytics/AnalyticsViewModel.kt` — MODIFIED (added `calculateSlotAverages()`, TimeSlot import, included slotAverages in Success)
-- `app/src/main/java/com/healthtrend/app/ui/analytics/AnalyticsScreen.kt` — MODIFIED (added TimeOfDayBreakdownSection below chart in AnalyticsContent)
-- `app/src/main/java/com/healthtrend/app/ui/analytics/TimeOfDayBreakdownCard.kt` — NEW (card composable + 2x2 section layout)
+- `app/src/main/java/com/healthtrend/app/ui/analytics/AnalyticsScreen.kt` — MODIFIED (added TimeOfDayBreakdownSection below chart in AnalyticsContent; now passes day-count period for accessibility copy)
+- `app/src/main/java/com/healthtrend/app/ui/analytics/TimeOfDayBreakdownCard.kt` — NEW/MODIFIED (card composable + 2x2 section layout; uses Severity icon; day-count TalkBack; fixed margins)
 - `app/src/test/java/com/healthtrend/app/ui/analytics/AnalyticsViewModelTest.kt` — MODIFIED (7 new slot average tests)
 - `app/src/test/java/com/healthtrend/app/ui/analytics/AnalyticsUiStateTest.kt` — MODIFIED (2 new slotAverages tests)
+- `app/src/androidTest/java/com/healthtrend/app/ui/analytics/TimeOfDayBreakdownCardTest.kt` — NEW (Compose UI tests for card semantics, empty state, and section rendering)
+
+## Senior Developer Review (AI)
+
+### Reviewer
+Raja (AI Senior Developer Review)
+
+### Date
+2026-02-11
+
+### Outcome
+Approved after fixes. All previously reported HIGH/MEDIUM findings for Story 5.2 were addressed and verified with Gradle.
+
+### Review Notes
+- AC #2 validated: average indicator now uses `Severity.icon`.
+- AC #5 validated: TalkBack now announces day-count phrasing (e.g., "over 7 days.").
+- Layout validated: duplicate horizontal padding removed from breakdown section to preserve 16dp margins.
+- Coverage validated: Added Android Compose UI tests for data card semantics, empty card semantics, and 4-card section rendering.
+
+## Change Log
+
+- 2026-02-11: Senior review remediation applied (accessibility copy, severity icon, spacing correction, new UI tests); story moved to `done`.

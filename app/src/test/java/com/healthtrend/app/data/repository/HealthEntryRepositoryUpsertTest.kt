@@ -110,4 +110,22 @@ class HealthEntryRepositoryUpsertTest {
         assertNotNull(entry)
         assert(entry!!.updatedAt in before..after)
     }
+
+    @Test
+    fun `upsertEntry triggers immediate sync`() = runTest {
+        assertEquals(0, fakeSyncTrigger.syncEnqueueCount)
+
+        repository.upsertEntry("2026-02-08", TimeSlot.MORNING, Severity.MILD)
+
+        assertEquals(1, fakeSyncTrigger.syncEnqueueCount)
+    }
+
+    @Test
+    fun `upsertEntry triggers sync on update too`() = runTest {
+        repository.upsertEntry("2026-02-08", TimeSlot.MORNING, Severity.MILD)
+        assertEquals(1, fakeSyncTrigger.syncEnqueueCount)
+
+        repository.upsertEntry("2026-02-08", TimeSlot.MORNING, Severity.SEVERE)
+        assertEquals(2, fakeSyncTrigger.syncEnqueueCount)
+    }
 }

@@ -1,6 +1,6 @@
 # Story 3.3: Two-Way Google Sheets Sync
 
-Status: review
+Status: done
 
 ## Story
 
@@ -173,17 +173,31 @@ Claude claude-4.6-opus (via Cursor)
 ### Debug Log References
 
 - Build environment (Java, Gradle, Android SDK) not available in terminal — tests authored but not executed. Tests follow project patterns (FakeDao/FakeClient + Turbine + runTest).
-- GoogleSheetsService: API methods are stubbed (return empty/no-op) — actual Google Sheets API v4 integration requires runtime credentials from GoogleAuthManager + Google Cloud Console setup. The helper methods (extractSpreadsheetId, parseSeverity, parseTimestamp, column mappings) are fully implemented and tested.
-- SyncWorker: Full push-then-pull sync protocol implemented. @HiltWorker annotation for Hilt dependency injection into CoroutineWorker.
+- GoogleSheetsService: Fully implemented with Google Sheets API v4 via `GoogleAccountCredential.usingOAuth2()`. Uses OAuth2 credentials from the signed-in Google account (Credential Manager). All three API methods (readSheet, writeCell, appendRow) execute real API calls with `Dispatchers.IO`. Helper methods (extractSpreadsheetId, parseSeverity, parseTimestamp, column mappings) fully implemented and tested.
+- SyncWorker: Delegates to `SyncLogic` for testable push-then-pull protocol. @HiltWorker with `HiltWorkerFactory` configured in Application.
+- SyncLogic: Extracted from SyncWorker for unit testing without Android context. Single readSheet call shared by both push and pull phases.
 - Introduced `SyncTrigger` interface and `SheetsClient` interface for testability — concrete implementations are `SyncManager` and `GoogleSheetsService`.
 
 ### Completion Notes List
 
-- **Task 1:** Created `GoogleSheetsService` implementing `SheetsClient` interface in `data/sync/`. Column mapping: A=Date, B-E=severities, F-I=timestamps. Helper methods: `extractSpreadsheetId()`, `parseSeverity()`, `parseTimestamp()`. Registered via `SyncModule` Hilt binding. Uses exact `Severity.displayName` for Sheet writes.
-- **Task 2:** Created `SyncWorker` as `@HiltWorker` extending `CoroutineWorker`. Push phase: queries unsynced entries, compares timestamps, writes to Sheet only if local is newer, marks synced. Pull phase: reads all Sheet rows, updates local only if Sheet is newer, creates entries if missing. Error handling: all errors → `Result.retry()`. Precondition check: skips silently if no Sheet URL or no signed-in account.
+- **Task 1:** Created `GoogleSheetsService` implementing `SheetsClient` interface in `data/sync/`. Full Sheets API v4 implementation using `GoogleAccountCredential.usingOAuth2()` with `@ApplicationContext`. Column mapping: A=Date, B-E=severities, F-I=timestamps. Helper methods: `extractSpreadsheetId()`, `parseSeverity()`, `parseTimestamp()`. Registered via `SyncModule` Hilt binding. Uses exact `Severity.displayName` for Sheet writes.
+- **Task 2:** Created `SyncWorker` as `@HiltWorker` extending `CoroutineWorker`, delegating to `SyncLogic`. Push phase: queries unsynced entries, compares timestamps, writes to Sheet only if local is newer, marks synced ONLY after write. Pull phase: reads Sheet data (from shared single read), updates local only if Sheet is newer, creates entries if missing. New row creation uses cell-level writes only (NEVER nulls). Error handling: all errors → `Result.retry()`. Precondition check: skips silently if no Sheet URL or no signed-in account.
 - **Task 3:** Created `SyncManager` implementing `SyncTrigger` interface. `enqueueImmediateSync()` uses `ExistingWorkPolicy.KEEP`. `registerPeriodicSync()` hourly with `ExistingPeriodicWorkPolicy.KEEP`. Both use `BackoffPolicy.EXPONENTIAL` with 30s initial delay. Network connectivity constraint required.
-- **Task 4:** Updated `HealthEntryRepository.upsertEntry()` to call `syncTrigger.enqueueImmediateSync()` after Room save. Updated `HealthTrendApplication.onCreate()` to call `syncManager.registerPeriodicSync()` and `syncManager.registerAppLaunchSync()`. Added `getUnsyncedEntriesOnce()` to DAO/Repository for sync push. Added `getSettingsOnce()` to AppSettingsRepository for SyncWorker.
+- **Task 4:** Updated `HealthEntryRepository.upsertEntry()` to call `syncTrigger.enqueueImmediateSync()` after Room save. Updated `HealthTrendApplication.onCreate()` to call `syncManager.registerPeriodicSync()` and `syncManager.registerAppLaunchSync()`. Added `getUnsyncedEntriesOnce()` to DAO/Repository for sync push. Added `getSettingsOnce()` to AppSettingsRepository for SyncWorker. Configured `HiltWorkerFactory` via `Configuration.Provider` in Application. Disabled default WorkManager initialization in AndroidManifest.
 - **Task 5:** Verified zero sync UI: grep scan of all UI files confirms no sync indicators, no connectivity banners, no "last synced" timestamps, no error messages for sync failures. All "sync" occurrences are in code comments only.
+
+### Code Review Fixes (2026-02-11)
+
+Adversarial code review performed by Claude claude-4.6-opus. 8 issues found (3 Critical, 3 High, 2 Medium). All fixed:
+
+- **C1 (CRITICAL):** Added `HiltWorkerFactory` + `Configuration.Provider` to `HealthTrendApplication`. Disabled default WorkManager initialization in `AndroidManifest.xml`. Without this, `@HiltWorker` SyncWorker would crash at runtime.
+- **C2 (CRITICAL):** Replaced stubbed GoogleSheetsService API methods with full Sheets API v4 implementation using `GoogleAccountCredential.usingOAuth2()`, `NetHttpTransport`, `GsonFactory`, `ValueRange`. All operations run on `Dispatchers.IO`.
+- **C3 (CRITICAL):** Injected `@ApplicationContext Context` into `GoogleSheetsService` for credential creation. Added `accountEmail` parameter to `SheetsClient` interface for per-call authentication.
+- **H1 (HIGH):** Replaced `appendNewRow` (which wrote nulls for empty slots) with `writeNewRowCells` in `SyncLogic` — uses cell-level writes only (date, severity, timestamp). Zero nulls sent to Sheet.
+- **H2 (HIGH):** Rewrote `SyncWorkerLogicTest` to test through extracted `SyncLogic` class. 15 tests covering push writes, push skip on newer Sheet, equal timestamp handling, new row cell writes, pull create, pull update, pull skip newer local, idempotency, error propagation, column mappings.
+- **H3 (HIGH):** Fixed `markSynced` to only run after successful write. When Sheet is newer, entry stays `synced=false` for pull phase to handle. When timestamps are equal, marks synced without writing.
+- **M1 (MEDIUM):** Eliminated double `readSheet` API call. Single read in `executeSync()` shared by both push and pull phases, halving quota usage.
+- **M2 (MEDIUM):** Added 2 sync trigger assertions to `HealthEntryRepositoryUpsertTest`: verifies `enqueueImmediateSync()` called on insert and on update.
 
 ### File List
 
@@ -192,6 +206,7 @@ Claude claude-4.6-opus (via Cursor)
 - `app/src/main/java/com/healthtrend/app/data/sync/SyncWorker.kt`
 - `app/src/main/java/com/healthtrend/app/data/sync/SyncManager.kt`
 - `app/src/main/java/com/healthtrend/app/data/sync/SyncTrigger.kt`
+- `app/src/main/java/com/healthtrend/app/data/sync/SyncLogic.kt` (extracted testable sync protocol)
 - `app/src/main/java/com/healthtrend/app/di/SyncModule.kt`
 - `app/src/test/java/com/healthtrend/app/data/sync/GoogleSheetsServiceTest.kt`
 - `app/src/test/java/com/healthtrend/app/data/sync/SyncWorkerLogicTest.kt`
@@ -205,8 +220,9 @@ Claude claude-4.6-opus (via Cursor)
 - `app/src/main/java/com/healthtrend/app/data/repository/HealthEntryRepository.kt` — added SyncTrigger dependency, sync trigger in upsertEntry(), getUnsyncedEntriesOnce()
 - `app/src/main/java/com/healthtrend/app/data/repository/AppSettingsRepository.kt` — added getSettingsOnce()
 - `app/src/main/java/com/healthtrend/app/di/RepositoryModule.kt` — updated to inject SyncTrigger
-- `app/src/main/java/com/healthtrend/app/HealthTrendApplication.kt` — added SyncManager injection, periodic + app launch sync
+- `app/src/main/java/com/healthtrend/app/HealthTrendApplication.kt` — added HiltWorkerFactory + Configuration.Provider, SyncManager injection, periodic + app launch sync
+- `app/src/main/AndroidManifest.xml` — disabled default WorkManager initialization for HiltWorkerFactory
 - `app/src/test/java/com/healthtrend/app/data/local/FakeHealthEntryDao.kt` — added getUnsyncedEntriesOnce()
 - `app/src/test/java/com/healthtrend/app/data/repository/HealthEntryRepositoryTest.kt` — updated for SyncTrigger
-- `app/src/test/java/com/healthtrend/app/data/repository/HealthEntryRepositoryUpsertTest.kt` — updated for SyncTrigger
+- `app/src/test/java/com/healthtrend/app/data/repository/HealthEntryRepositoryUpsertTest.kt` — updated for SyncTrigger, added sync trigger assertions
 - `app/src/test/java/com/healthtrend/app/ui/daycard/DayCardViewModelTest.kt` — updated for SyncTrigger

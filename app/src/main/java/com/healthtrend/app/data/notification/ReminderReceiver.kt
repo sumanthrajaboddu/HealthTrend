@@ -33,12 +33,20 @@ class ReminderReceiver : BroadcastReceiver() {
 
         // Show the notification
         val notificationHelper = NotificationHelper(appContext)
-        notificationHelper.showReminderNotification(timeSlot)
+        try {
+            notificationHelper.showReminderNotification(timeSlot)
+        } catch (_: SecurityException) {
+            // Silent failure by design when notification permission is unavailable.
+        }
 
         // Reschedule for next day (daily repeating pattern)
         if (hour >= 0 && minute >= 0) {
             val scheduler = NotificationScheduler(appContext)
-            scheduler.scheduleAlarm(timeSlot, hour, minute)
+            try {
+                scheduler.scheduleAlarm(timeSlot, hour, minute)
+            } catch (_: SecurityException) {
+                // Silent failure by design when exact alarm capability is unavailable.
+            }
         }
     }
 }

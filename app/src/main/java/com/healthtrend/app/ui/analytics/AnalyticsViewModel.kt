@@ -2,6 +2,7 @@ package com.healthtrend.app.ui.analytics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.graphics.Bitmap
 import com.healthtrend.app.data.export.PdfGenerator
 import com.healthtrend.app.data.model.HealthEntry
 import com.healthtrend.app.data.model.Severity
@@ -54,7 +55,8 @@ class AnalyticsViewModel @Inject constructor(
     val uiState: StateFlow<AnalyticsUiState> = _selectedRange
         .flatMapLatest { range ->
             val endDate = LocalDate.now()
-            val startDate = endDate.minusDays(range.days.toLong())
+            // Inclusive range query in Room: include today plus the previous (days - 1) dates.
+            val startDate = endDate.minusDays((range.days - 1).toLong())
             val startStr = startDate.format(DATE_FORMATTER)
             val endStr = endDate.format(DATE_FORMATTER)
 
@@ -188,7 +190,7 @@ class AnalyticsViewModel @Inject constructor(
      * Runs on Dispatchers.IO — NOT Main thread (subtask 3.4).
      * Collects current entries, slot averages, patient name, and passes to PdfGenerator.
      */
-    fun onExportPdf() {
+    fun onExportPdf(chartBitmap: Bitmap? = null) {
         if (_exportState.value is ExportState.Generating) return // prevent double-tap (subtask 3.3)
         _exportState.value = ExportState.Generating // set immediately on Main to block double-tap
 
@@ -196,7 +198,8 @@ class AnalyticsViewModel @Inject constructor(
             try {
                 val range = _selectedRange.value
                 val endDate = LocalDate.now()
-                val startDate = endDate.minusDays(range.days.toLong())
+                // Keep export date window aligned with on-screen analytics range.
+                val startDate = endDate.minusDays((range.days - 1).toLong())
                 val startStr = startDate.format(DATE_FORMATTER)
                 val endStr = endDate.format(DATE_FORMATTER)
 
@@ -216,7 +219,8 @@ class AnalyticsViewModel @Inject constructor(
                     startDate = startDate,
                     endDate = endDate,
                     entries = entries,
-                    slotAverages = slotAverages
+                    slotAverages = slotAverages,
+                    chartBitmap = chartBitmap
                 )
 
                 _exportState.value = ExportState.Preview(pdfFile)

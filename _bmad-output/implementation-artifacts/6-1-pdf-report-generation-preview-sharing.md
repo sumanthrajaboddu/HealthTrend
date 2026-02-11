@@ -1,6 +1,6 @@
 # Story 6.1: PDF Report Generation, Preview & Sharing
 
-Status: review
+Status: done
 
 ## Story
 
@@ -172,3 +172,22 @@ claude-4.6-opus-high-thinking (Cursor IDE)
 - `app/src/test/java/com/healthtrend/app/data/export/FakePdfGenerator.kt` — NEW: test fake
 - `app/src/test/java/com/healthtrend/app/ui/analytics/AnalyticsViewModelTest.kt` — MODIFIED: updated constructor, added 10 export tests
 - `app/src/test/java/com/healthtrend/app/ui/analytics/AnalyticsUiStateTest.kt` — MODIFIED: added 5 ExportState tests
+- `app/src/main/java/com/healthtrend/app/ui/analytics/AnalyticsScreen.kt` — MODIFIED: captures rendered TrendChart bitmap for export, improved TalkBack phrasing, renders export error state inline
+- `app/src/main/java/com/healthtrend/app/ui/analytics/AnalyticsViewModel.kt` — MODIFIED: `onExportPdf(chartBitmap)` now forwards captured chart bitmap to PdfGenerator
+- `app/src/main/java/com/healthtrend/app/ui/analytics/PdfPreviewScreen.kt` — MODIFIED: lazy page rendering to reduce memory pressure for multi-page previews
+
+### Senior Developer Review (AI)
+- Reviewer: Raja (AI-assisted code review workflow)
+- Date: 2026-02-11
+- Outcome: Changes Requested → Fixed
+
+#### Findings addressed in this pass
+1. **Vico chart export path was not wired**: `AnalyticsScreen` now captures the rendered `TrendChart` bitmap and `AnalyticsViewModel` forwards it to `PdfGenerator` via `chartBitmap`.
+2. **TalkBack phrasing mismatch risk on Export button**: Export button semantics now use the explicit required phrase: "Export PDF report. Double tap to generate."
+3. **Export error not visible in UI**: `ExportState.Error` now renders an inline error message on Analytics screen.
+4. **PDF preview memory risk**: `PdfPreviewScreen` switched from eager all-pages bitmap rendering to lazy per-page rendering and page-local bitmap disposal.
+
+#### Verification
+- Ran:
+  - `./gradlew :app:testDebugUnitTest --tests "com.healthtrend.app.ui.analytics.AnalyticsViewModelTest" --tests "com.healthtrend.app.ui.analytics.AnalyticsUiStateTest"`
+- Result: **PASS**

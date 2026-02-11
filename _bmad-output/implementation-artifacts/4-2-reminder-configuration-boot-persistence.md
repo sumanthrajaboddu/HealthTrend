@@ -1,6 +1,6 @@
 # Story 4.2: Reminder Configuration & Boot Persistence
 
-Status: review
+Status: done
 
 ## Story
 
@@ -131,7 +131,7 @@ Claude claude-4.6-opus (Cursor)
 
 - **Task 1:** Created `ReminderSettingsSection.kt` composable with global toggle (Material 3 Switch), 4 per-slot rows (toggle + time text), and Material 3 `TimePicker` dialog. Per-slot controls are dimmed (alpha 0.38) when global is off. Slot labels from `TimeSlot.displayName`. Updated `SettingsScreen.kt` to include reminder section below auth section with divider.
 - **Task 2:** Added `ReminderScheduler` interface to `NotificationScheduler.kt`. Updated `SettingsViewModel` with 3 new handlers: `onGlobalRemindersToggled`, `onSlotReminderToggled`, `onSlotTimeChanged`. All auto-save to Room immediately + update alarms via `ReminderScheduler`. Added `updateSlotReminderEnabled()` and `updateSlotReminderTime()` to `AppSettingsRepository`. Updated `SettingsUiState.Success` with `globalRemindersEnabled` and `slotReminders: List<SlotReminderState>`. Added `buildSlotReminderStates()` to map AppSettings → UI state. Updated `NotificationModule` to bind `ReminderScheduler` interface.
-- **Task 3:** Created `BootReceiver.kt` with `@AndroidEntryPoint` for Hilt injection. Registered in AndroidManifest with `RECEIVE_BOOT_COMPLETED` intent filter. Uses `goAsync()` + minimal `CoroutineScope(Dispatchers.IO)` for Room suspend query. Reads settings via `AppSettingsRepository.getSettingsOnce()`, calls `ReminderScheduler.scheduleAllActive()`.
+- **Task 3:** Created `BootReceiver.kt` with `@AndroidEntryPoint` for Hilt injection. Registered in AndroidManifest with `RECEIVE_BOOT_COMPLETED` intent filter. Uses `goAsync()` + lightweight background thread (no coroutines) for boot-time scheduling. Reads settings via synchronous repository query and calls `ReminderScheduler.scheduleAllActive()`.
 - **Task 4:** Full TalkBack accessibility in `ReminderSettingsSection`: global toggle semantics, per-slot toggle semantics with slot name + status + time, time picker semantics, disabled state semantics. All use `Modifier.semantics { contentDescription = ... }` with `mergeDescendants = true` for grouped announcements.
 - **Tests:** 16 new tests in `SettingsViewModelTest` covering: reminder defaults in initial state, slot displayName mapping, default times, global toggle cancels all alarms, global toggle persists to Room, global toggle re-enables scheduling, per-slot toggle cancels/schedules individual, per-slot toggle persists, time change reschedules, time change persists, `buildSlotReminderStates` mapping. Created `FakeReminderScheduler` for deterministic test control.
 
@@ -149,3 +149,39 @@ Claude claude-4.6-opus (Cursor)
 - `app/src/main/AndroidManifest.xml` — MODIFIED (added BootReceiver registration)
 - `app/src/test/java/com/healthtrend/app/data/notification/FakeReminderScheduler.kt` — NEW
 - `app/src/test/java/com/healthtrend/app/ui/settings/SettingsViewModelTest.kt` — MODIFIED (added 16 reminder tests, updated setup for `FakeReminderScheduler`)
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+Amelia (Dev Agent) — 2026-02-11
+
+### Findings Addressed
+
+- **HIGH:** Removed coroutine usage from `BootReceiver` and moved boot-time logic to `BootReminderRegistrar` with thread-based receiver execution.
+- **HIGH:** Added boot persistence unit coverage via `BootReminderRegistrarTest`.
+- **HIGH:** Added TalkBack announcement coverage for reminder descriptions via `ReminderAccessibilityDescriptionsTest`.
+- **MEDIUM:** Hardened `SettingsViewModel` scheduling guards so slot scheduling only happens when global + slot state are active after persistence.
+- **MEDIUM:** Added guard tests for global-off/slot-off scheduling edge cases in `SettingsViewModelTest`.
+
+### Validation Run
+
+- `./gradlew :app:testDebugUnitTest --tests com.healthtrend.app.data.notification.BootReminderRegistrarTest --tests com.healthtrend.app.ui.settings.ReminderAccessibilityDescriptionsTest --tests com.healthtrend.app.ui.settings.SettingsViewModelTest --tests com.healthtrend.app.data.repository.AppSettingsRepositoryTest`
+- Result: **BUILD SUCCESSFUL**
+
+### Review Fix File List (2026-02-11)
+
+- `app/src/main/java/com/healthtrend/app/data/local/AppSettingsDao.kt` — MODIFIED (`getSettingsNow()` synchronous query)
+- `app/src/main/java/com/healthtrend/app/data/repository/AppSettingsRepository.kt` — MODIFIED (`getSettingsNow()` passthrough)
+- `app/src/main/java/com/healthtrend/app/data/notification/BootReceiver.kt` — MODIFIED (no coroutines; extracted `BootReminderRegistrar`)
+- `app/src/main/java/com/healthtrend/app/ui/settings/SettingsViewModel.kt` — MODIFIED (global/slot guard checks before scheduling)
+- `app/src/main/java/com/healthtrend/app/ui/settings/ReminderSettingsSection.kt` — MODIFIED (extracted TalkBack description builders)
+- `app/src/test/java/com/healthtrend/app/data/local/FakeAppSettingsDao.kt` — MODIFIED (sync test helper + sync query implementation)
+- `app/src/test/java/com/healthtrend/app/data/notification/BootReminderRegistrarTest.kt` — NEW
+- `app/src/test/java/com/healthtrend/app/ui/settings/ReminderAccessibilityDescriptionsTest.kt` — NEW
+- `app/src/test/java/com/healthtrend/app/ui/settings/SettingsViewModelTest.kt` — MODIFIED (added guard-path tests)
+- `app/src/test/java/com/healthtrend/app/data/repository/AppSettingsRepositoryTest.kt` — MODIFIED (added synchronous read test)
+
+## Change Log
+
+- 2026-02-11: Senior review fixes applied for Story 4.2 high/medium findings. Story status moved from `review` to `done` after targeted unit tests passed.

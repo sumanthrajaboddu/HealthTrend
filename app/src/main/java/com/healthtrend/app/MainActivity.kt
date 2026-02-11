@@ -1,6 +1,7 @@
 package com.healthtrend.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -8,13 +9,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import com.healthtrend.app.data.notification.NotificationHelper
 import com.healthtrend.app.ui.navigation.HealthTrendNavHost
 import com.healthtrend.app.ui.theme.HealthTrendTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private var openDayCardTrigger by mutableIntStateOf(0)
+
 
     /**
      * POST_NOTIFICATIONS runtime permission launcher (API 33+).
@@ -30,12 +37,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleNotificationIntent(intent)
         requestNotificationPermissionIfNeeded()
         setContent {
             HealthTrendTheme {
-                HealthTrendNavHost()
+                HealthTrendNavHost(openDayCardTrigger = openDayCardTrigger)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationIntent(intent)
     }
 
     /**
@@ -50,6 +64,16 @@ class MainActivity : ComponentActivity() {
             ) {
                 notificationPermissionLauncher.launch(permission)
             }
+        }
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        val shouldOpenDayCard = intent?.getBooleanExtra(
+            NotificationHelper.EXTRA_OPEN_DAY_CARD,
+            false
+        ) == true
+        if (shouldOpenDayCard) {
+            openDayCardTrigger++
         }
     }
 }

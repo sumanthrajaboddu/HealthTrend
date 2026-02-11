@@ -1,8 +1,10 @@
 package com.healthtrend.app.ui.settings
 
 import app.cash.turbine.test
+import android.content.Context
 import com.healthtrend.app.data.auth.FakeGoogleAuthClient
 import com.healthtrend.app.data.auth.GoogleSignInResult
+import org.mockito.Mockito.mock
 import com.healthtrend.app.data.local.FakeAppSettingsDao
 import com.healthtrend.app.data.model.AppSettings
 import com.healthtrend.app.data.model.TimeSlot
@@ -233,6 +235,61 @@ class SettingsViewModelTest {
         )
     }
 
+    // --- Auth Sign-In Tests ---
+
+    @Test
+    fun `onSignIn success persists email and sets SignedIn state`() = runTest {
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem() // initial
+
+            viewModel.onSignIn(mockContext)
+
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            assertTrue(state.authState is AuthState.SignedIn)
+            assertEquals("raja@example.com", (state.authState as AuthState.SignedIn).email)
+            assertEquals("raja@example.com", fakeDao.getSettingsOnce()?.googleAccountEmail)
+        }
+    }
+
+    @Test
+    fun `onSignIn failure sets RefreshFailed state`() = runTest {
+        fakeAuthClient.signInResult = GoogleSignInResult.Failure("Network error")
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSignIn(mockContext)
+
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            assertTrue(state.authState is AuthState.RefreshFailed)
+        }
+    }
+
+    @Test
+    fun `onSignIn cancelled keeps SignedOut state`() = runTest {
+        fakeAuthClient.signInResult = GoogleSignInResult.Cancelled
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem() // initial SignedOut
+
+            viewModel.onSignIn(mockContext)
+
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            assertTrue(state.authState is AuthState.SignedOut)
+        }
+    }
+
     // --- Auth Sign-Out Tests ---
 
     @Test
@@ -292,6 +349,23 @@ class SettingsViewModelTest {
             val state = expectMostRecentItem() as SettingsUiState.Success
             assertEquals("Uncle", state.patientName)
             assertEquals("https://docs.google.com/spreadsheets/d/xyz789", state.sheetUrl)
+        }
+    }
+
+    // --- AC #5: Share Sheet Link — state exposes sheetUrl for share intent ---
+
+    @Test
+    fun `AC5 Share Sheet Link - success state exposes sheetUrl as content to share`() = runTest {
+        val shareUrl = "https://docs.google.com/spreadsheets/d/abc123/edit"
+        fakeDao.insertOrReplace(AppSettings(sheetUrl = shareUrl))
+
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            assertEquals(shareUrl, state.sheetUrl)
+            assertTrue(state.sheetUrl.isNotEmpty())
+            // Screen uses state.sheetUrl for ShareUtils.createShareSheetIntent(state.sheetUrl)
         }
     }
 
@@ -435,6 +509,22 @@ class SettingsViewModelTest {
         }
     }
 
+    @Test
+    fun `onSlotReminderToggled true does not schedule when global reminders are disabled`() = runTest {
+        fakeDao.insertOrReplace(AppSettings(globalRemindersEnabled = false, eveningReminderEnabled = false))
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSlotReminderToggled(TimeSlot.EVENING, true)
+            expectMostRecentItem()
+
+            assertFalse(fakeScheduler.scheduledAlarms.containsKey(TimeSlot.EVENING))
+            assertTrue(fakeScheduler.cancelledSlots.contains(TimeSlot.EVENING))
+        }
+    }
+
     // --- AC #4: Time change ---
 
     @Test
@@ -481,6 +571,38 @@ class SettingsViewModelTest {
             assertTrue(fakeScheduler.cancelledSlots.contains(TimeSlot.MORNING))
             // New alarm scheduled at 7:30
             assertEquals(7 to 30, fakeScheduler.scheduledAlarms[TimeSlot.MORNING])
+        }
+    }
+
+    @Test
+    fun `onSlotTimeChanged does not schedule when slot is disabled`() = runTest {
+        fakeDao.insertOrReplace(AppSettings(morningReminderEnabled = false))
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSlotTimeChanged(TimeSlot.MORNING, 7, 30)
+            expectMostRecentItem()
+
+            assertTrue(fakeScheduler.cancelledSlots.contains(TimeSlot.MORNING))
+            assertFalse(fakeScheduler.scheduledAlarms.containsKey(TimeSlot.MORNING))
+        }
+    }
+
+    @Test
+    fun `onSlotTimeChanged does not schedule when global reminders are disabled`() = runTest {
+        fakeDao.insertOrReplace(AppSettings(globalRemindersEnabled = false))
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSlotTimeChanged(TimeSlot.MORNING, 7, 30)
+            expectMostRecentItem()
+
+            assertTrue(fakeScheduler.cancelledSlots.contains(TimeSlot.MORNING))
+            assertFalse(fakeScheduler.scheduledAlarms.containsKey(TimeSlot.MORNING))
         }
     }
 

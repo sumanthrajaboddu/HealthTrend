@@ -1,5 +1,7 @@
 package com.healthtrend.app.ui.analytics
 
+import android.graphics.Bitmap
+import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,21 +16,33 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.view.drawToBitmap
 
 /**
  * Analytics screen — replaces AnalyticsPlaceholderScreen.
@@ -39,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  *
  * Uses collectAsStateWithLifecycle() — NEVER collectAsState().
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(
     modifier: Modifier = Modifier,
@@ -47,6 +62,8 @@ fun AnalyticsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedRange by viewModel.selectedRange.collectAsStateWithLifecycle()
     val exportState by viewModel.exportState.collectAsStateWithLifecycle()
+    val rootView = LocalView.current
+    var chartBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
 
     // PDF Preview mode — replaces analytics content (Story 6.1 Task 4)
     val currentExportState = exportState
@@ -59,49 +76,79 @@ fun AnalyticsScreen(
         return
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
-        // Date range selector — always visible (AC #1)
-        Spacer(modifier = Modifier.height(16.dp))
-        DateRangeSelector(
-            selectedRange = selectedRange,
-            onRangeSelected = viewModel::selectRange
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        when (val state = uiState) {
-            is AnalyticsUiState.Loading -> {
-                // NO loading spinner per UX constraints.
-                // Data loads from local Room in < 500ms, so Loading state is transient.
-            }
-
-            is AnalyticsUiState.Empty -> {
-                EmptyAnalyticsState(
-                    selectedRange = state.selectedRange,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            is AnalyticsUiState.Success -> {
-                AnalyticsContent(
-                    state = state,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        // Export PDF button — visible in Success and Empty states (Story 6.1 AC #1, #7)
-        if (uiState !is AnalyticsUiState.Loading) {
-            Spacer(modifier = Modifier.height(16.dp))
-            ExportPdfButton(
-                onClick = viewModel::onExportPdf,
-                isExporting = currentExportState is ExportState.Generating,
-                modifier = Modifier.padding(horizontal = 16.dp)
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Analytics",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.semantics { heading() }
+                    )
+                }
             )
-            Spacer(modifier = Modifier.height(24.dp))
+        },
+        modifier = modifier
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Date range selector — always visible (AC #1)
+            Spacer(modifier = Modifier.height(8.dp))
+            DateRangeSelector(
+                selectedRange = selectedRange,
+                onRangeSelected = viewModel::selectRange
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            when (val state = uiState) {
+                is AnalyticsUiState.Loading -> {
+                    // NO loading spinner per UX constraints.
+                    // Data loads from local Room in < 500ms, so Loading state is transient.
+                }
+
+                is AnalyticsUiState.Empty -> {
+                    EmptyAnalyticsState(
+                        selectedRange = state.selectedRange,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                is AnalyticsUiState.Success -> {
+                    AnalyticsContent(
+                        state = state,
+                        onChartBoundsChanged = { chartBoundsInRoot = it },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            if (currentExportState is ExportState.Error) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = currentExportState.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            // Export PDF button — visible in Success and Empty states (Story 6.1 AC #1, #7)
+            if (uiState !is AnalyticsUiState.Loading) {
+                Spacer(modifier = Modifier.height(16.dp))
+                ExportPdfButton(
+                    onClick = {
+                        val chartBitmap = captureChartBitmap(rootView, chartBoundsInRoot)
+                        viewModel.onExportPdf(chartBitmap = chartBitmap)
+                    },
+                    isExporting = currentExportState is ExportState.Generating,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }
@@ -112,6 +159,7 @@ fun AnalyticsScreen(
 @Composable
 private fun AnalyticsContent(
     state: AnalyticsUiState.Success,
+    onChartBoundsChanged: (Rect) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val summary = state.summary
@@ -122,28 +170,37 @@ private fun AnalyticsContent(
     Column(
         modifier = modifier
             .padding(horizontal = 16.dp)
-            .semantics {
-                contentDescription = talkBackSummary
-            }
     ) {
         // Trend chart (Story 5.1 AC #2)
-        TrendChart(
-            chartData = state.chartData,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coordinates ->
+                    onChartBoundsChanged(coordinates.boundsInRoot())
+                }
+        ) {
+            TrendChart(
+                chartData = state.chartData,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = talkBackSummary
+                    }
+            )
+        }
 
         // Time-of-day breakdown cards (Story 5.2 AC #1)
         Spacer(modifier = Modifier.height(24.dp))
         TimeOfDayBreakdownSection(
             slotAverages = state.slotAverages,
-            periodLabel = summary.periodLabel
+            periodDays = state.selectedRange.days
         )
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
 /**
- * Empty state — calm, neutral, no motivational text (AC #4).
+ * Empty state — calm, neutral icon + guidance text (AC #4).
  * Announces "No data for selected period" via TalkBack.
  */
 @Composable
@@ -160,11 +217,28 @@ private fun EmptyAnalyticsState(
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "No data for this period",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.BarChart,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.outlineVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "No data for this period",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Log severity entries on the Today tab to see trends here.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
     }
 }
 
@@ -190,8 +264,7 @@ private fun ExportPdfButton(
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "Export PDF report"
-                onClick(label = "generate") { false }
+                contentDescription = "Export PDF report. Double tap to generate."
             }
     ) {
         if (isExporting) {
@@ -202,7 +275,7 @@ private fun ExportPdfButton(
                 strokeWidth = 2.dp
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Generating…")
+            Text("Generating\u2026")
         } else {
             Icon(
                 imageVector = Icons.Filled.PictureAsPdf,
@@ -213,4 +286,16 @@ private fun ExportPdfButton(
             Text("Export PDF")
         }
     }
+}
+
+private fun captureChartBitmap(view: View, chartBoundsInRoot: Rect?): Bitmap? {
+    val bounds = chartBoundsInRoot ?: return null
+    if (bounds.width <= 0f || bounds.height <= 0f) return null
+
+    val rootBitmap = view.drawToBitmap()
+    val left = bounds.left.toInt().coerceIn(0, rootBitmap.width - 1)
+    val top = bounds.top.toInt().coerceIn(0, rootBitmap.height - 1)
+    val width = bounds.width.toInt().coerceAtLeast(1).coerceAtMost(rootBitmap.width - left)
+    val height = bounds.height.toInt().coerceAtLeast(1).coerceAtMost(rootBitmap.height - top)
+    return Bitmap.createBitmap(rootBitmap, left, top, width, height)
 }

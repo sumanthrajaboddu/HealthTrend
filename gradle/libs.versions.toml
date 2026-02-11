@@ -15,6 +15,7 @@ junit = "4.13.2"
 junitExt = "1.2.1"
 espressoCore = "3.6.1"
 turbine = "1.2.0"
+mockito = "5.14.0"
 credentialManager = "1.5.0"
 googleId = "1.2.0"
 googleApiClient = "2.8.1"
@@ -73,6 +74,7 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 junit-ext = { group = "androidx.test.ext", name = "junit", version.ref = "junitExt" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 
 # Credential Manager
 credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentialManager" }

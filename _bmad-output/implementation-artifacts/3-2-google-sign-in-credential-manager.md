@@ -1,6 +1,6 @@
 # Story 3.2: Google Sign-In with Credential Manager
 
-Status: review
+Status: done
 
 ## Story
 
@@ -146,6 +146,12 @@ Claude claude-4.6-opus (via Cursor)
 - **Task 4:** Added `AuthSection` composable to Settings screen below share button. Shows "Sign in with Google" button (signed out), "Signed in as [email]" + "Sign out" (signed in), "Please sign in again" + button (refresh failed). NO blocking dialogs, NO popups, NO toasts.
 - **Task 5:** All TalkBack semantics: sign-in button ("Sign in with Google. Double tap to sign in."), signed-in state ("Signed in as [email]"), sign-out button ("Sign out. Double tap to sign out."), refresh failed ("Authentication expired. Please sign in again.").
 
+### Code Review (AI) Fixes Applied
+
+- **AC#3:** Added "Not signed in" text and semantics when `AuthState.SignedOut` in `SettingsScreen.kt` AuthSection so Settings explicitly shows "Not signed in" after sign-out.
+- **Test coverage:** Added three ViewModel tests for `onSignIn`: success (persists email, SignedIn), failure (RefreshFailed), cancelled (keeps SignedOut). Added mockito-core for mock Context in tests.
+- **ShareUtils:** Confirmed owned by Story 3-1 (already in 3-1 File List); no change to 3-2 File List.
+
 ### File List
 
 **New files:**
@@ -155,10 +161,10 @@ Claude claude-4.6-opus (via Cursor)
 - `app/src/test/java/com/healthtrend/app/data/auth/FakeGoogleAuthClient.kt`
 
 **Modified files:**
-- `gradle/libs.versions.toml` — added credentialManager, googleId, googleApiClient, googleSheetsApi, googleHttpClientGson versions + library declarations
-- `app/build.gradle.kts` — added credentials, google-id, google-api-client, google-sheets-api, google-http-client-gson dependencies
+- `gradle/libs.versions.toml` — added credentialManager, googleId, googleApiClient, googleSheetsApi, googleHttpClientGson, mockito versions + library declarations
+- `app/build.gradle.kts` — added credentials, google-id, google-api-client, google-sheets-api, google-http-client-gson dependencies; testImplementation(mockito-core)
 - `app/src/main/java/com/healthtrend/app/ui/settings/SettingsUiState.kt` — replaced googleAccountEmail with AuthState sealed interface
 - `app/src/main/java/com/healthtrend/app/ui/settings/SettingsViewModel.kt` — added GoogleAuthClient dependency, auth state management, onSignIn/onSignOut
-- `app/src/main/java/com/healthtrend/app/ui/settings/SettingsScreen.kt` — added AuthSection composable, sign-in/out buttons, TalkBack semantics
-- `app/src/test/java/com/healthtrend/app/ui/settings/SettingsViewModelTest.kt` — updated for GoogleAuthClient, added auth tests
+- `app/src/main/java/com/healthtrend/app/ui/settings/SettingsScreen.kt` — added AuthSection composable, "Not signed in" when SignedOut (AC#3), sign-in/out buttons, TalkBack semantics
+- `app/src/test/java/com/healthtrend/app/ui/settings/SettingsViewModelTest.kt` — updated for GoogleAuthClient, added auth tests; code review: onSignIn success/failure/cancelled tests
 - `app/src/test/java/com/healthtrend/app/ui/settings/SettingsUiStateTest.kt` — updated for AuthState tests

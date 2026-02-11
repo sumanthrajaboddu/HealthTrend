@@ -88,13 +88,13 @@ private fun GlobalReminderToggle(
     onToggled: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val statusText = if (enabled) "enabled" else "disabled"
+    val description = buildGlobalToggleDescription(enabled)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .semantics(mergeDescendants = true) {
-                contentDescription = "Reminders, $statusText. Double tap to toggle."
+                contentDescription = description
             },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -136,18 +136,8 @@ private fun SlotReminderRow(
     var showTimePicker by remember { mutableStateOf(false) }
 
     // TalkBack announcement varies by state (AC #6)
-    val toggleDescription = if (!globalEnabled) {
-        "${slotState.timeSlot.displayName} reminder, disabled. Enable global reminders first."
-    } else {
-        val statusText = if (slotState.enabled) "enabled" else "disabled"
-        "${slotState.timeSlot.displayName} reminder, $statusText, ${slotState.timeDisplay}. Double tap to toggle."
-    }
-
-    val timeDescription = if (globalEnabled && slotState.enabled) {
-        "${slotState.timeSlot.displayName} reminder time, ${slotState.timeDisplay}. Double tap to change."
-    } else {
-        "${slotState.timeSlot.displayName} reminder time, ${slotState.timeDisplay}."
-    }
+    val toggleDescription = buildSlotToggleDescription(slotState, globalEnabled)
+    val timeDescription = buildSlotTimeDescription(slotState, globalEnabled)
 
     Row(
         modifier = modifier
@@ -207,6 +197,33 @@ private fun SlotReminderRow(
             },
             onDismiss = { showTimePicker = false }
         )
+    }
+}
+
+internal fun buildGlobalToggleDescription(enabled: Boolean): String {
+    val statusText = if (enabled) "enabled" else "disabled"
+    return "Reminders, $statusText. Double tap to toggle."
+}
+
+internal fun buildSlotToggleDescription(
+    slotState: SlotReminderState,
+    globalEnabled: Boolean
+): String {
+    if (!globalEnabled) {
+        return "${slotState.timeSlot.displayName} reminder, disabled. Enable global reminders first."
+    }
+    val statusText = if (slotState.enabled) "enabled" else "disabled"
+    return "${slotState.timeSlot.displayName} reminder, $statusText, ${slotState.timeDisplay}. Double tap to toggle."
+}
+
+internal fun buildSlotTimeDescription(
+    slotState: SlotReminderState,
+    globalEnabled: Boolean
+): String {
+    return if (globalEnabled && slotState.enabled) {
+        "${slotState.timeSlot.displayName} reminder time, ${slotState.timeDisplay}. Double tap to change."
+    } else {
+        "${slotState.timeSlot.displayName} reminder time, ${slotState.timeDisplay}."
     }
 }
 

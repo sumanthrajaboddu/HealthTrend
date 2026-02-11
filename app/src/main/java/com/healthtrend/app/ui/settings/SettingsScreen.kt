@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +20,6 @@ import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,7 +34,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -138,6 +135,14 @@ private fun SettingsContent(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // --- Profile Section Header ---
+        Text(
+            text = "Profile",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { heading() }
+        )
+
         // --- Patient Name Field ---
         OutlinedTextField(
             value = patientNameLocal,
@@ -162,6 +167,17 @@ private fun SettingsContent(
                 .semantics {
                     contentDescription = "Patient name, ${patientNameLocal.ifEmpty { "empty" }}. Edit text."
                 }
+        )
+
+        // --- Divider before Sync Section ---
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+        // --- Sync Section Header ---
+        Text(
+            text = "Sync",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { heading() }
         )
 
         // --- Google Sheet URL Field ---
@@ -284,6 +300,14 @@ private fun AuthSection(
 
         when (authState) {
             is AuthState.SignedOut -> {
+                Text(
+                    text = "Not signed in",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Not signed in"
+                    }
+                )
                 Button(
                     onClick = onSignIn,
                     modifier = Modifier
@@ -341,16 +365,15 @@ private fun AuthSection(
             }
 
             is AuthState.Loading -> {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.padding(16.dp),
-                        strokeWidth = 2.dp
-                    )
-                }
+                // No spinner per UX rules (only PDF generation may show a spinner).
+                Text(
+                    text = "Signing in…",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Signing in. Please wait."
+                    }
+                )
             }
         }
     }
@@ -361,11 +384,6 @@ private fun AuthSection(
  * AC #5 (Story 3.1): Intent.ACTION_SEND with Sheet URL as content.
  */
 private fun shareSheetLink(context: Context, sheetUrl: String) {
-    val sendIntent = Intent().apply {
-        action = Intent.ACTION_SEND
-        putExtra(Intent.EXTRA_TEXT, sheetUrl)
-        type = "text/plain"
-    }
-    val shareIntent = Intent.createChooser(sendIntent, null)
+    val shareIntent = Intent.createChooser(ShareUtils.createShareSheetIntent(sheetUrl), null)
     context.startActivity(shareIntent)
 }

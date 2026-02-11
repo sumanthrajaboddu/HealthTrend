@@ -3,9 +3,13 @@ package com.healthtrend.app.data.notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.healthtrend.app.MainActivity
 import com.healthtrend.app.R
 import com.healthtrend.app.data.model.TimeSlot
@@ -56,6 +60,7 @@ class NotificationHelper @Inject constructor(
     fun showReminderNotification(timeSlot: TimeSlot) {
         val tapIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_OPEN_DAY_CARD, true)
         }
         val tapPendingIntent = PendingIntent.getActivity(
             context,
@@ -63,6 +68,8 @@ class NotificationHelper @Inject constructor(
             tapIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
+        if (!hasNotificationPermission()) return
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
@@ -73,7 +80,19 @@ class NotificationHelper @Inject constructor(
             .setAutoCancel(true)
             .build()
 
-        notificationManager.notify(getNotificationId(timeSlot), notification)
+        try {
+            notificationManager.notify(getNotificationId(timeSlot), notification)
+        } catch (_: SecurityException) {
+            // Silent failure per UX requirement: if permission denied, reminders simply do not fire.
+        }
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     companion object {
@@ -81,5 +100,6 @@ class NotificationHelper @Inject constructor(
         const val CHANNEL_NAME = "Reminders"
         const val CHANNEL_DESCRIPTION = "Daily symptom logging reminders"
         const val NOTIFICATION_TITLE = "HealthTrend"
+        const val EXTRA_OPEN_DAY_CARD = "extra_open_day_card"
     }
 }

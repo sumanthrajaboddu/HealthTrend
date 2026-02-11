@@ -159,8 +159,8 @@ class SettingsViewModel @Inject constructor(
     fun onSlotReminderToggled(timeSlot: TimeSlot, enabled: Boolean) {
         viewModelScope.launch {
             appSettingsRepository.updateSlotReminderEnabled(timeSlot, enabled)
-            if (enabled) {
-                val settings = appSettingsRepository.getSettingsOnce() ?: return@launch
+            val settings = appSettingsRepository.getSettingsOnce() ?: return@launch
+            if (enabled && settings.globalRemindersEnabled && getEnabledForSlot(settings, timeSlot)) {
                 val timeStr = getTimeForSlot(settings, timeSlot)
                 val time = parseAlarmTime(timeStr)
                 reminderScheduler.scheduleAlarm(timeSlot, time.hour, time.minute)
@@ -180,7 +180,10 @@ class SettingsViewModel @Inject constructor(
             appSettingsRepository.updateSlotReminderTime(timeSlot, timeStr)
             // Cancel old alarm and schedule at new time
             reminderScheduler.cancelAlarm(timeSlot)
-            reminderScheduler.scheduleAlarm(timeSlot, hour, minute)
+            val settings = appSettingsRepository.getSettingsOnce() ?: return@launch
+            if (settings.globalRemindersEnabled && getEnabledForSlot(settings, timeSlot)) {
+                reminderScheduler.scheduleAlarm(timeSlot, hour, minute)
+            }
         }
     }
 

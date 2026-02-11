@@ -53,24 +53,24 @@ development_status:
 
   # Epic 3: App Configuration & Google Sheets Sync
   epic-3: in-progress
-  3-1-settings-screen-app-configuration: review
-  3-2-google-sign-in-credential-manager: review
-  3-3-two-way-google-sheets-sync: review
+  3-1-settings-screen-app-configuration: done
+  3-2-google-sign-in-credential-manager: done
+  3-3-two-way-google-sheets-sync: done
   epic-3-retrospective: optional
 
   # Epic 4: Notification Reminders
   epic-4: in-progress
-  4-1-notification-scheduler-reminder-delivery: review
-  4-2-reminder-configuration-boot-persistence: review
+  4-1-notification-scheduler-reminder-delivery: done
+  4-2-reminder-configuration-boot-persistence: done
   epic-4-retrospective: optional
 
   # Epic 5: Analytics & Trends
   epic-5: in-progress
-  5-1-severity-trend-chart-date-range-selection: review
-  5-2-time-of-day-breakdown-cards: review
+  5-1-severity-trend-chart-date-range-selection: done
+  5-2-time-of-day-breakdown-cards: done
   epic-5-retrospective: optional
 
   # Epic 6: PDF Report & Sharing
   epic-6: in-progress
-  6-1-pdf-report-generation-preview-sharing: review
+  6-1-pdf-report-generation-preview-sharing: done
   epic-6-retrospective: optional

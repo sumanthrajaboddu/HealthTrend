@@ -5,21 +5,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.healthtrend.app.data.model.Severity
+import com.patrykandpatrick.vico.compose.common.fill
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.core.common.Fill
+import com.patrykandpatrick.vico.core.common.component.ShapeComponent
 import com.patrykandpatrick.vico.core.common.data.ExtraStore
+import com.patrykandpatrick.vico.core.common.shape.CorneredShape
 import java.time.format.DateTimeFormatter
 
 /**
@@ -56,6 +62,35 @@ fun TrendChart(
     modifier: Modifier = Modifier
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
+    val severityPointProvider = remember {
+        val pointsBySeverity = Severity.entries.associate { severity ->
+            severity.numericValue to LineCartesianLayer.Point(
+                component = ShapeComponent(
+                    fill = Fill(severity.color.toArgb()),
+                    shape = CorneredShape.Pill
+                ),
+                sizeDp = 8f
+            )
+        }
+
+        object : LineCartesianLayer.PointProvider {
+            override fun getPoint(
+                entry: com.patrykandpatrick.vico.core.cartesian.data.LineCartesianLayerModel.Entry,
+                seriesIndex: Int,
+                extraStore: ExtraStore
+            ): LineCartesianLayer.Point? {
+                val severityValue = entry.y.toInt().coerceIn(
+                    Severity.NO_PAIN.numericValue,
+                    Severity.SEVERE.numericValue
+                )
+                return pointsBySeverity[severityValue]
+            }
+
+            override fun getLargestPoint(extraStore: ExtraStore): LineCartesianLayer.Point? {
+                return pointsBySeverity[Severity.SEVERE.numericValue]
+            }
+        }
+    }
 
     // Format date labels for X-axis
     val dateLabels = remember(chartData) {
@@ -86,6 +121,13 @@ fun TrendChart(
     CartesianChartHost(
         chart = rememberCartesianChart(
             rememberLineCartesianLayer(
+                lineProvider = LineCartesianLayer.LineProvider.series(
+                    LineCartesianLayer.Line(
+                        // Keep the connecting line neutral while each data point uses severity color.
+                        fill = LineCartesianLayer.LineFill.single(fill(Severity.MODERATE.color)),
+                        pointProvider = severityPointProvider
+                    )
+                ),
                 rangeProvider = remember {
                     CartesianLayerRangeProvider.fixed(minY = 0.0, maxY = 3.0)
                 }

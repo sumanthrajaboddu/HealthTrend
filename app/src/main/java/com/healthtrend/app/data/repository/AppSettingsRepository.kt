@@ -100,4 +100,10 @@ class AppSettingsRepository @Inject constructor(
      * Get settings as a one-shot query (non-Flow, for sync worker and boot receiver).
      */
     suspend fun getSettingsOnce() = appSettingsDao.getSettingsOnce()
+
+    /**
+     * Synchronous one-shot query for boot-time receiver path.
+     * Must be called from a background thread.
+     */
+    fun getSettingsNow() = appSettingsDao.getSettingsNow()
 }

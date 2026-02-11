@@ -110,13 +110,21 @@ class AppSettingsRepositoryTest {
     @Test
     fun `multiple updates preserve other fields`() = runTest {
         repository.updatePatientName("Uncle")
-        repository.updateSheetUrl("https://sheets.google.com/test")
+        repository.updateSheetUrl("https://docs.google.com/spreadsheets/d/test123")
         repository.getSettings().test {
             val settings = awaitItem()
             assertNotNull(settings)
             assertEquals("Uncle", settings!!.patientName)
-            assertEquals("https://sheets.google.com/test", settings.sheetUrl)
+            assertEquals("https://docs.google.com/spreadsheets/d/test123", settings.sheetUrl)
             assertTrue(settings.globalRemindersEnabled) // default preserved
         }
+    }
+
+    @Test
+    fun `getSettingsNow returns latest settings synchronously`() = runTest {
+        repository.updatePatientName("Raja")
+        val settings = repository.getSettingsNow()
+        assertNotNull(settings)
+        assertEquals("Raja", settings!!.patientName)
     }
 }

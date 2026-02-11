@@ -167,6 +167,22 @@ class AnalyticsViewModelTest {
     }
 
     @Test
+    fun `ONE_WEEK includes today plus previous 6 days only`() = runTest {
+        // Boundary validation for inclusive Room BETWEEN query:
+        // daysAgo 6 should be included, daysAgo 7 should be excluded.
+        insertEntry(6, TimeSlot.MORNING, Severity.MILD)
+        insertEntry(7, TimeSlot.MORNING, Severity.SEVERE)
+
+        val viewModel = createViewModel()
+        viewModel.uiState.test {
+            val state = expectMostRecentItem() as AnalyticsUiState.Success
+            assertEquals(1, state.chartData.size)
+            assertEquals(Severity.MILD.numericValue.toFloat(), state.chartData.first().severityValue)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `switching to ONE_MONTH includes entries beyond 1 week`() = runTest {
         // Insert entry 15 days ago — outside 1 Week but inside 1 Month
         insertEntry(15, TimeSlot.MORNING, Severity.MODERATE)

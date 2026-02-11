@@ -17,6 +17,10 @@ class FakeAppSettingsDao : AppSettingsDao {
         _settings.value = settings
     }
 
+    fun insertOrReplaceBlocking(settings: AppSettings) {
+        _settings.value = settings
+    }
+
     override suspend fun updatePatientName(name: String) {
         _settings.value = _settings.value?.copy(patientName = name)
     }
@@ -34,4 +38,6 @@ class FakeAppSettingsDao : AppSettingsDao {
     }
 
     override suspend fun getSettingsOnce(): AppSettings? = _settings.value
+
+    override fun getSettingsNow(): AppSettings? = _settings.value
 }

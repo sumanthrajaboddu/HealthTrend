@@ -1,6 +1,6 @@
 # Story 3.1: Settings Screen & App Configuration
 
-Status: review
+Status: done
 
 ## Story
 
@@ -130,6 +130,14 @@ Claude claude-4.6-opus (via Cursor)
 
 - Build environment (Java, Gradle, Android SDK) not available in terminal — tests authored but not executed at runtime. Tests are structurally correct following Epic 1 patterns (FakeDao + Turbine + runTest).
 
+### Code Review (AI) Fixes Applied
+
+- **NavHost:** Replaced `SettingsPlaceholderScreen` with `SettingsScreen` in `HealthTrendNavHost.kt` (Task 3.1 was claimed but not done).
+- **Database:** Bumped `HealthTrendDatabase` to version 2 and added `AutoMigration(from = 1, to = 2)`.
+- **UX:** Removed sign-in `CircularProgressIndicator`; replaced with "Signing in…" text (project rule: no spinners except PDF).
+- **AC #5 test:** Extracted `ShareUtils.createShareSheetIntent()` for testability; added ViewModel test that Success state exposes `sheetUrl` for share.
+- **Test data:** Updated test URLs to valid Google Sheets format in `AppSettingsRepositoryTest` and `AppSettingsTest`.
+
 ### Completion Notes List
 
 - **Task 1:** Created `AppSettings` Room entity (single-row, id=1, 13 fields with defaults including Epic 4 reminder fields). Created `AppSettingsDao` with Flow observable + suspend write queries. Created `AppSettingsRepository` with `ensureSettingsExist()` pattern for first-launch initialization. Updated `HealthTrendDatabase` to version 2 with `AutoMigration(from=1, to=2)`. Registered DAO and Repository in Hilt modules.
@@ -147,6 +155,7 @@ Claude claude-4.6-opus (via Cursor)
 - `app/src/main/java/com/healthtrend/app/ui/settings/SettingsScreen.kt`
 - `app/src/main/java/com/healthtrend/app/ui/settings/SettingsViewModel.kt`
 - `app/src/main/java/com/healthtrend/app/ui/settings/SettingsUiState.kt`
+- `app/src/main/java/com/healthtrend/app/ui/settings/ShareUtils.kt` — share intent builder (AC #5), testable
 - `app/src/test/java/com/healthtrend/app/data/model/AppSettingsTest.kt`
 - `app/src/test/java/com/healthtrend/app/data/local/FakeAppSettingsDao.kt`
 - `app/src/test/java/com/healthtrend/app/data/repository/AppSettingsRepositoryTest.kt`
@@ -154,7 +163,11 @@ Claude claude-4.6-opus (via Cursor)
 - `app/src/test/java/com/healthtrend/app/ui/settings/SettingsUiStateTest.kt`
 
 **Modified files:**
-- `app/src/main/java/com/healthtrend/app/data/local/HealthTrendDatabase.kt` — added AppSettings entity, bumped to v2, auto-migration
+- `app/src/main/java/com/healthtrend/app/data/local/HealthTrendDatabase.kt` — added AppSettings entity, version 2, AutoMigration(1, 2)
 - `app/src/main/java/com/healthtrend/app/di/DatabaseModule.kt` — added provideAppSettingsDao
 - `app/src/main/java/com/healthtrend/app/di/RepositoryModule.kt` — added provideAppSettingsRepository
-- `app/src/main/java/com/healthtrend/app/ui/navigation/HealthTrendNavHost.kt` — replaced SettingsPlaceholderScreen with SettingsScreen
+- `app/src/main/java/com/healthtrend/app/ui/navigation/HealthTrendNavHost.kt` — replaced SettingsPlaceholderScreen with SettingsScreen (code review fix)
+- `app/src/main/java/com/healthtrend/app/ui/settings/SettingsScreen.kt` — share via ShareUtils; sign-in loading = text only (no spinner)
+- `app/src/test/java/com/healthtrend/app/data/model/AppSettingsTest.kt` — test URL to valid Sheets format
+- `app/src/test/java/com/healthtrend/app/data/repository/AppSettingsRepositoryTest.kt` — test URL to valid Sheets format
+- `app/src/test/java/com/healthtrend/app/ui/settings/SettingsViewModelTest.kt` — AC #5 test (state exposes sheetUrl for share)

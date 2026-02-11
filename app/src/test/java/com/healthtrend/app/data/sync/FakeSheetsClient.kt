@@ -5,6 +5,7 @@ import com.healthtrend.app.data.model.TimeSlot
 /**
  * Fake SheetsClient for unit testing.
  * Stores in-memory rows and tracks write operations.
+ * accountEmail parameter is accepted but ignored — tests don't need real auth.
  */
 class FakeSheetsClient : SheetsClient {
 
@@ -20,17 +21,26 @@ class FakeSheetsClient : SheetsClient {
     /** If true, readSheet and writeCell throw an exception. */
     var shouldFail = false
 
-    override suspend fun readSheet(sheetUrl: String): List<SheetRow> {
+    override suspend fun readSheet(sheetUrl: String, accountEmail: String): List<SheetRow> {
         if (shouldFail) throw RuntimeException("Simulated API failure")
         return rows.toList()
     }
 
-    override suspend fun writeCell(sheetUrl: String, cellRange: String, value: Any) {
+    override suspend fun writeCell(
+        sheetUrl: String,
+        accountEmail: String,
+        cellRange: String,
+        value: Any
+    ) {
         if (shouldFail) throw RuntimeException("Simulated API failure")
         cellWrites.add(cellRange to value)
     }
 
-    override suspend fun appendRow(sheetUrl: String, rowData: List<Any?>) {
+    override suspend fun appendRow(
+        sheetUrl: String,
+        accountEmail: String,
+        rowData: List<Any?>
+    ) {
         if (shouldFail) throw RuntimeException("Simulated API failure")
         appendedRows.add(rowData)
 

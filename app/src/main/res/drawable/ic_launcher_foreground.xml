@@ -5,7 +5,22 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
+    <!-- Heart shape — white on teal background -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,24a30,30 0 1,0 0,60a30,30 0 1,0 0,-60z" />
+        android:pathData="M54,78 C54,78 30,60 30,46 C30,37 37,30 45,30 C50,30 53,34 54,37 C55,34 58,30 63,30 C71,30 78,37 78,46 C78,60 54,78 54,78Z" />
+
+    <!-- Upward trend line — deep blue, cutting through the heart -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1E3A8A"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M37,62 L46,52 L52,58 L68,36" />
+
+    <!-- Arrow tip — coral accent -->
+    <path
+        android:fillColor="#F97373"
+        android:pathData="M64,34 L70,34 L70,40Z" />
 </vector>

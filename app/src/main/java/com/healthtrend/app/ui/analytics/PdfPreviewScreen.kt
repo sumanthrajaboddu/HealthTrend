@@ -8,7 +8,6 @@ import android.os.ParcelFileDescriptor
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -19,8 +18,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
@@ -67,17 +66,7 @@ fun PdfPreviewScreen(
     // Handle system back button (subtask 4.4)
     BackHandler(onBack = onBack)
 
-    // Render PDF pages to bitmaps
-    val pages = remember(pdfFile) {
-        renderPdfPages(pdfFile)
-    }
-
-    // Clean up bitmaps when composable leaves composition
-    DisposableEffect(pages) {
-        onDispose {
-            pages.forEach { it.recycle() }
-        }
-    }
+    val pageCount = remember(pdfFile) { getPdfPageCount(pdfFile) }
 
     Column(modifier = modifier.fillMaxSize()) {
         // Top app bar with back and title
@@ -94,20 +83,18 @@ fun PdfPreviewScreen(
         )
 
         // Scrollable PDF pages (subtask 4.3)
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
         ) {
-            pages.forEachIndexed { index, bitmap ->
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Report page ${index + 1} of ${pages.size}",
-                    modifier = Modifier.fillMaxWidth(),
-                    contentScale = ContentScale.FillWidth
+            items((0 until pageCount).toList()) { pageIndex ->
+                PdfPageImage(
+                    pdfFile = pdfFile,
+                    pageIndex = pageIndex,
+                    pageCount = pageCount
                 )
             }
         }
@@ -145,32 +132,60 @@ fun PdfPreviewScreen(
  * Render all PDF pages to bitmaps for preview display.
  * Renders at 2x scale for sharp display on high-DPI screens.
  */
-private fun renderPdfPages(pdfFile: File): List<Bitmap> {
-    val bitmaps = mutableListOf<Bitmap>()
+private fun getPdfPageCount(pdfFile: File): Int {
     val pfd = ParcelFileDescriptor.open(pdfFile, ParcelFileDescriptor.MODE_READ_ONLY)
     val renderer = PdfRenderer(pfd)
 
-    try {
-        for (i in 0 until renderer.pageCount) {
-            val page = renderer.openPage(i)
-            // Render at 2x for sharp preview
-            val bitmap = Bitmap.createBitmap(
-                page.width * 2,
-                page.height * 2,
-                Bitmap.Config.ARGB_8888
-            )
-            // White background
-            bitmap.eraseColor(android.graphics.Color.WHITE)
-            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-            page.close()
-            bitmaps.add(bitmap)
-        }
+    return try {
+        renderer.pageCount
     } finally {
         renderer.close()
         pfd.close()
     }
+}
 
-    return bitmaps
+@Composable
+private fun PdfPageImage(
+    pdfFile: File,
+    pageIndex: Int,
+    pageCount: Int
+) {
+    val bitmap = remember(pdfFile, pageIndex) {
+        renderPdfPage(pdfFile, pageIndex)
+    }
+
+    DisposableEffect(bitmap) {
+        onDispose { bitmap.recycle() }
+    }
+
+    Image(
+        bitmap = bitmap.asImageBitmap(),
+        contentDescription = "Report page ${pageIndex + 1} of $pageCount",
+        modifier = Modifier.fillMaxWidth(),
+        contentScale = ContentScale.FillWidth
+    )
+}
+
+private fun renderPdfPage(pdfFile: File, pageIndex: Int): Bitmap {
+    val pfd = ParcelFileDescriptor.open(pdfFile, ParcelFileDescriptor.MODE_READ_ONLY)
+    val renderer = PdfRenderer(pfd)
+
+    try {
+        val page = renderer.openPage(pageIndex)
+        // Render at 1.5x to reduce peak memory while keeping text crisp.
+        val bitmap = Bitmap.createBitmap(
+            (page.width * 1.5f).toInt(),
+            (page.height * 1.5f).toInt(),
+            Bitmap.Config.ARGB_8888
+        )
+        bitmap.eraseColor(android.graphics.Color.WHITE)
+        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+        page.close()
+        return bitmap
+    } finally {
+        renderer.close()
+        pfd.close()
+    }
 }
 
 /**

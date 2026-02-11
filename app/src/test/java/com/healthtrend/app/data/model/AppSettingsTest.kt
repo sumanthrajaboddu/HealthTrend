@@ -74,9 +74,9 @@ class AppSettingsTest {
     @Test
     fun `copy preserves unmodified fields`() {
         val original = AppSettings(patientName = "Uncle")
-        val copied = original.copy(sheetUrl = "https://sheets.google.com/test")
+        val copied = original.copy(sheetUrl = "https://docs.google.com/spreadsheets/d/test123")
         assertEquals("Uncle", copied.patientName)
-        assertEquals("https://sheets.google.com/test", copied.sheetUrl)
+        assertEquals("https://docs.google.com/spreadsheets/d/test123", copied.sheetUrl)
         assertEquals(1, copied.id)
     }
 }

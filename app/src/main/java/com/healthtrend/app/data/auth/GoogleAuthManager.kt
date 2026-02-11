@@ -7,6 +7,7 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
+import com.healthtrend.app.BuildConfig
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -54,7 +55,11 @@ class GoogleAuthManager @Inject constructor(
      */
     override suspend fun signIn(activityContext: Context): GoogleSignInResult {
         return try {
-            val signInOption = GetSignInWithGoogleOption.Builder(SERVER_CLIENT_ID)
+            if (BuildConfig.GOOGLE_SERVER_CLIENT_ID == MISSING_SERVER_CLIENT_ID_VALUE) {
+                return GoogleSignInResult.Failure("Server client ID is not configured")
+            }
+
+            val signInOption = GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_SERVER_CLIENT_ID)
                 .build()
 
             val request = GetCredentialRequest.Builder()
@@ -93,15 +98,7 @@ class GoogleAuthManager @Inject constructor(
     }
 
     companion object {
-        /**
-         * Web server client ID from Google Cloud Console.
-         * This is the OAuth 2.0 client ID (Web application type).
-         * Must be configured in Google Cloud Console for the project.
-         *
-         * TODO: Move to BuildConfig or google-services.json when project is configured
-         * with a Google Cloud project. For now, this is a placeholder that must be
-         * replaced with the actual client ID before auth will work.
-         */
-        const val SERVER_CLIENT_ID = "YOUR_SERVER_CLIENT_ID.apps.googleusercontent.com"
+        private const val MISSING_SERVER_CLIENT_ID_VALUE =
+            "YOUR_SERVER_CLIENT_ID.apps.googleusercontent.com"
     }
 }

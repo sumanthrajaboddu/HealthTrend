@@ -26,8 +26,14 @@ class NotificationPermissionsTest {
     }
 
     @Test
+    fun `notification deep link extra key is stable`() {
+        assertEquals("extra_open_day_card", NotificationHelper.EXTRA_OPEN_DAY_CARD)
+    }
+
+    @Test
     fun `extra keys are non-empty and unique`() {
         val keys = listOf(
+            NotificationHelper.EXTRA_OPEN_DAY_CARD,
             NotificationScheduler.EXTRA_TIME_SLOT,
             NotificationScheduler.EXTRA_ALARM_HOUR,
             NotificationScheduler.EXTRA_ALARM_MINUTE

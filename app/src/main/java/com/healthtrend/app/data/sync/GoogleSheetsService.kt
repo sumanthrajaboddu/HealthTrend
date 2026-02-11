@@ -1,7 +1,17 @@
 package com.healthtrend.app.data.sync
 
+import android.content.Context
+import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.api.client.http.javanet.NetHttpTransport
+import com.google.api.client.json.gson.GsonFactory
+import com.google.api.services.sheets.v4.Sheets
+import com.google.api.services.sheets.v4.SheetsScopes
+import com.google.api.services.sheets.v4.model.ValueRange
 import com.healthtrend.app.data.model.Severity
 import com.healthtrend.app.data.model.TimeSlot
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,7 +22,7 @@ import javax.inject.Singleton
  */
 data class SheetRow(
     val date: String, // YYYY-MM-DD (Column A)
-    val rowIndex: Int, // 0-based row index in Sheet (row 0 = header, row 1+ = data)
+    val rowIndex: Int, // 0-based index from API response (header=0, first data=1). A1 row = rowIndex + 1.
     val slots: Map<TimeSlot, SheetSlotData?>
 )
 
@@ -27,6 +37,8 @@ data class SheetSlotData(
 /**
  * Interface for Google Sheets API operations — enables testing with fakes.
  * Cell-level reads/writes only. NEVER full-row overwrites.
+ *
+ * @param accountEmail Google account email for OAuth2 authentication.
  */
 interface SheetsClient {
 
@@ -35,33 +47,37 @@ interface SheetsClient {
      * Reads columns A through I (Date, 4 severities, 4 timestamps).
      *
      * @param sheetUrl Full Google Sheet URL
+     * @param accountEmail Google account email for authentication
      * @return List of SheetRow, one per data row in the Sheet
      */
-    suspend fun readSheet(sheetUrl: String): List<SheetRow>
+    suspend fun readSheet(sheetUrl: String, accountEmail: String): List<SheetRow>
 
     /**
      * Write a single cell value to the Sheet.
      * Cell-level write — never overwrite entire rows.
      *
      * @param sheetUrl Full Google Sheet URL
+     * @param accountEmail Google account email for authentication
      * @param cellRange A1 notation (e.g., "B5" for Morning of row 5)
      * @param value The value to write
      */
-    suspend fun writeCell(sheetUrl: String, cellRange: String, value: Any)
+    suspend fun writeCell(sheetUrl: String, accountEmail: String, cellRange: String, value: Any)
 
     /**
      * Append a new row to the Sheet for a new date.
      * Format: [date, morning, afternoon, evening, night, morningTs, afternoonTs, eveningTs, nightTs]
      *
      * @param sheetUrl Full Google Sheet URL
+     * @param accountEmail Google account email for authentication
      * @param rowData List of values for the new row
      */
-    suspend fun appendRow(sheetUrl: String, rowData: List<Any?>)
+    suspend fun appendRow(sheetUrl: String, accountEmail: String, rowData: List<Any?>)
 }
 
 /**
  * Google Sheets API v4 service for cell-level reads and writes.
- * Uses credentials from GoogleAuthManager.
+ * Uses GoogleAccountCredential with OAuth2 for authentication.
+ * Credentials come from the signed-in Google account (Credential Manager).
  * NEVER overwrites entire rows — cell-level writes only.
  *
  * Sheet column mapping:
@@ -76,37 +92,125 @@ interface SheetsClient {
  * - I = Night timestamp (epoch millis)
  */
 @Singleton
-class GoogleSheetsService @Inject constructor() : SheetsClient {
+class GoogleSheetsService @Inject constructor(
+    @param:ApplicationContext private val context: Context
+) : SheetsClient {
 
-    override suspend fun readSheet(sheetUrl: String): List<SheetRow> {
-        // TODO: Implement with Google Sheets API v4 client
-        // For now, returns empty list — actual API integration requires
-        // GoogleAccountCredential which depends on runtime context.
-        //
-        // Implementation will:
-        // 1. Extract spreadsheet ID from URL
-        // 2. Use Sheets API to read range "Sheet1!A:I"
-        // 3. Parse rows into SheetRow objects
-        // 4. Skip header row (index 0)
-        return emptyList()
+    /**
+     * Build authenticated Sheets API client for the given account.
+     * GoogleAccountCredential uses AccountManager for silent token refresh.
+     */
+    private fun buildSheetsService(accountEmail: String): Sheets {
+        val credential = GoogleAccountCredential.usingOAuth2(
+            context,
+            listOf(SheetsScopes.SPREADSHEETS)
+        )
+        credential.selectedAccountName = accountEmail
+
+        val transport = NetHttpTransport()
+        val jsonFactory = GsonFactory.getDefaultInstance()
+
+        return Sheets.Builder(transport, jsonFactory, credential)
+            .setApplicationName(APP_NAME)
+            .build()
     }
 
-    override suspend fun writeCell(sheetUrl: String, cellRange: String, value: Any) {
-        // TODO: Implement with Google Sheets API v4 client
-        // Implementation will:
-        // 1. Extract spreadsheet ID from URL
-        // 2. Use Sheets API to write single cell value
-        // 3. Use ValueInputOption.RAW for numeric timestamps, USER_ENTERED for text
+    override suspend fun readSheet(sheetUrl: String, accountEmail: String): List<SheetRow> {
+        return withContext(Dispatchers.IO) {
+            val spreadsheetId = extractSpreadsheetId(sheetUrl)
+                ?: return@withContext emptyList()
+            val service = buildSheetsService(accountEmail)
+
+            val response = service.spreadsheets().values()
+                .get(spreadsheetId, DATA_RANGE)
+                .execute()
+
+            val rows = response.getValues() ?: return@withContext emptyList()
+
+            // Skip header row (index 0), parse data rows
+            rows.mapIndexedNotNull { index, row ->
+                if (index == 0) return@mapIndexedNotNull null
+                parseSheetRow(row, index)
+            }
+        }
     }
 
-    override suspend fun appendRow(sheetUrl: String, rowData: List<Any?>) {
-        // TODO: Implement with Google Sheets API v4 client
-        // Implementation will:
-        // 1. Extract spreadsheet ID from URL
-        // 2. Use Sheets API to append row to "Sheet1!A:I"
+    override suspend fun writeCell(
+        sheetUrl: String,
+        accountEmail: String,
+        cellRange: String,
+        value: Any
+    ) {
+        withContext(Dispatchers.IO) {
+            val spreadsheetId = extractSpreadsheetId(sheetUrl) ?: return@withContext
+            val service = buildSheetsService(accountEmail)
+
+            val range = "$SHEET_NAME!$cellRange"
+            val body = ValueRange().setValues(listOf(listOf(value)))
+
+            service.spreadsheets().values()
+                .update(spreadsheetId, range, body)
+                .setValueInputOption("RAW")
+                .execute()
+        }
+    }
+
+    override suspend fun appendRow(
+        sheetUrl: String,
+        accountEmail: String,
+        rowData: List<Any?>
+    ) {
+        withContext(Dispatchers.IO) {
+            val spreadsheetId = extractSpreadsheetId(sheetUrl) ?: return@withContext
+            val service = buildSheetsService(accountEmail)
+
+            val body = ValueRange().setValues(listOf(rowData))
+
+            service.spreadsheets().values()
+                .append(spreadsheetId, "$SHEET_NAME!A:I", body)
+                .setValueInputOption("RAW")
+                .execute()
+        }
+    }
+
+    /**
+     * Parse a raw API row into a SheetRow.
+     * @param row Raw row data from the API (List of cell values)
+     * @param rowIndex 0-based index in the API response (0=header)
+     */
+    private fun parseSheetRow(row: List<Any?>, rowIndex: Int): SheetRow? {
+        val date = (row.getOrNull(0) as? String)?.takeIf { it.isNotBlank() }
+            ?: return null
+
+        val slots = mutableMapOf<TimeSlot, SheetSlotData?>()
+        val slotMapping = mapOf(
+            TimeSlot.MORNING to Pair(1, 5),     // B=severity, F=timestamp
+            TimeSlot.AFTERNOON to Pair(2, 6),   // C=severity, G=timestamp
+            TimeSlot.EVENING to Pair(3, 7),     // D=severity, H=timestamp
+            TimeSlot.NIGHT to Pair(4, 8)        // E=severity, I=timestamp
+        )
+
+        for ((slot, indices) in slotMapping) {
+            val severityStr = (row.getOrNull(indices.first) as? String)
+                ?.takeIf { it.isNotBlank() }
+            val timestampStr = row.getOrNull(indices.second)?.toString()
+            val timestamp = parseTimestamp(timestampStr)
+
+            slots[slot] = if (severityStr != null && timestamp > 0L) {
+                SheetSlotData(severityStr, timestamp)
+            } else {
+                null
+            }
+        }
+
+        return SheetRow(date = date, rowIndex = rowIndex, slots = slots)
     }
 
     companion object {
+        private const val APP_NAME = "HealthTrend"
+        private const val SHEET_NAME = "Sheet1"
+        private const val DATA_RANGE = "Sheet1!A:I"
+
         /**
          * Column mapping for TimeSlot to Sheet column letters.
          * Severity columns: B=Morning, C=Afternoon, D=Evening, E=Night

@@ -17,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -34,18 +33,18 @@ import com.healthtrend.app.data.model.TimeSlot
  *
  * @param timeSlot the time slot this card represents.
  * @param averageSeverity the computed average, or null if no entries for this slot.
- * @param periodLabel the current date range label (e.g., "1 Week") for TalkBack.
+ * @param periodDays the selected date range length in days for TalkBack.
  */
 @Composable
 fun TimeOfDayBreakdownCard(
     timeSlot: TimeSlot,
     averageSeverity: Severity?,
-    periodLabel: String,
+    periodDays: Int,
     modifier: Modifier = Modifier
 ) {
     // TalkBack: "[Slot] average: [Severity] over [period]." or "[Slot]: No data for this period."
     val talkBackDescription = if (averageSeverity != null) {
-        "${timeSlot.displayName} average: ${averageSeverity.displayName} over $periodLabel."
+        "${timeSlot.displayName} average: ${averageSeverity.displayName} over $periodDays days."
     } else {
         "${timeSlot.displayName}: No data for this period."
     }
@@ -109,7 +108,7 @@ fun TimeOfDayBreakdownCard(
             // Severity icon (triple encoding: color + text + icon)
             if (averageSeverity != null) {
                 Icon(
-                    imageVector = timeSlot.icon,
+                    imageVector = averageSeverity.icon,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     tint = averageSeverity.color
@@ -127,13 +126,11 @@ fun TimeOfDayBreakdownCard(
 @Composable
 fun TimeOfDayBreakdownSection(
     slotAverages: Map<TimeSlot, Severity?>,
-    periodLabel: String,
+    periodDays: Int,
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // 2x2 grid layout
@@ -144,13 +141,13 @@ fun TimeOfDayBreakdownSection(
             TimeOfDayBreakdownCard(
                 timeSlot = TimeSlot.MORNING,
                 averageSeverity = slotAverages[TimeSlot.MORNING],
-                periodLabel = periodLabel,
+                periodDays = periodDays,
                 modifier = Modifier.weight(1f)
             )
             TimeOfDayBreakdownCard(
                 timeSlot = TimeSlot.AFTERNOON,
                 averageSeverity = slotAverages[TimeSlot.AFTERNOON],
-                periodLabel = periodLabel,
+                periodDays = periodDays,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -161,13 +158,13 @@ fun TimeOfDayBreakdownSection(
             TimeOfDayBreakdownCard(
                 timeSlot = TimeSlot.EVENING,
                 averageSeverity = slotAverages[TimeSlot.EVENING],
-                periodLabel = periodLabel,
+                periodDays = periodDays,
                 modifier = Modifier.weight(1f)
             )
             TimeOfDayBreakdownCard(
                 timeSlot = TimeSlot.NIGHT,
                 averageSeverity = slotAverages[TimeSlot.NIGHT],
-                periodLabel = periodLabel,
+                periodDays = periodDays,
                 modifier = Modifier.weight(1f)
             )
         }

@@ -1,6 +1,6 @@
 # Story 5.1: Severity Trend Chart & Date Range Selection
 
-Status: review
+Status: done
 
 ## Story
 
@@ -119,14 +119,16 @@ ui/analytics/
 claude-4.6-opus (Cursor IDE)
 
 ### Debug Log References
-- No gradle wrapper available in dev environment; tests written but need verification from Android Studio
+- `./gradlew :app:testDebugUnitTest --tests "com.healthtrend.app.ui.analytics.AnalyticsViewModelTest"` ✅
+- `./gradlew :app:compileDebugAndroidTestKotlin` ✅
 
 ### Completion Notes List
 - **Task 1:** Created `AnalyticsUiState.kt` (sealed interface: Loading, Success, Empty + DateRange, TrendDirection, ChartDataPoint, TrendSummary models). Created `AnalyticsViewModel.kt` (@HiltViewModel, flatMapLatest on selectedRange, daily max aggregation, trend direction via first/second half comparison, numericToSeverity rounding). 22 unit tests in `AnalyticsViewModelTest.kt` + 12 in `AnalyticsUiStateTest.kt`.
 - **Task 2:** Added Vico `compose-m3:2.4.3` dependency. Created `TrendChart.kt` (CartesianChartHost + LineCartesianLayer, fixed Y range 0-3, severity display names on Y-axis via CartesianValueFormatter, date labels on X-axis via ExtraStore). Created `AnalyticsScreen.kt` replacing placeholder, wired in navigation. Empty state: calm neutral "No data for this period".
 - **Task 3:** Created `DateRangeSelector.kt` (three Material 3 FilterChips, selected = filled/primaryContainer, onClick updates ViewModel).
 - **Task 4:** TalkBack semantics: chart area announces "Severity trend for [period]. Average: [severity]. Trend: [direction].", chips announce "[Range], selected/not selected. Double tap to select.", empty state announces "No data for selected period."
-- **Decision:** Daily aggregation uses max severity (simpler, conservative). Missing days skipped (gap in line). Trend threshold = 0.25 to avoid micro-fluctuations triggering IMPROVING/WORSENING. Line color uses `Severity.MODERATE.color` as a neutral mid-range; per-point severity coloring deferred to code review discussion.
+- **Review Fixes:** Navigation now renders `AnalyticsScreen` from `HealthTrendNavHost`; date range window corrected to inclusive `today + previous (days - 1)` to avoid 8/31/91-day windows; chart TalkBack summary moved to trend chart focus target; trend points now color by `Severity.color` via Vico `PointProvider`; added coverage for date-range boundary and chip selection UI.
+- **Decision:** Daily aggregation uses max severity (simpler, conservative). Missing days skipped (gap in line). Trend threshold = 0.25 to avoid micro-fluctuations triggering IMPROVING/WORSENING. Connecting line remains neutral (`Severity.MODERATE.color`) while each point reflects severity color.
 
 ### File List
 - `app/build.gradle.kts` — MODIFIED (added Vico compose-m3 dependency)
@@ -139,3 +141,20 @@ claude-4.6-opus (Cursor IDE)
 - `app/src/main/java/com/healthtrend/app/ui/navigation/HealthTrendNavHost.kt` — MODIFIED (AnalyticsPlaceholderScreen → AnalyticsScreen)
 - `app/src/test/java/com/healthtrend/app/ui/analytics/AnalyticsViewModelTest.kt` — NEW
 - `app/src/test/java/com/healthtrend/app/ui/analytics/AnalyticsUiStateTest.kt` — NEW
+- `app/src/androidTest/java/com/healthtrend/app/ui/analytics/DateRangeSelectorTest.kt` — NEW
+
+## Senior Developer Review (AI)
+
+- **Reviewer:** Raja
+- **Date:** 2026-02-11
+- **Outcome:** Approved after fixes
+- **Resolved Findings:**
+  - AC #1 navigation wiring mismatch fixed in `HealthTrendNavHost`.
+  - AC #2 severity color mapping implemented for trend chart data points.
+  - Inclusive date window corrected for AC #1/#3 (1 Week = 7 days, 1 Month = 30 days, 3 Months = 90 days).
+  - AC #6 TalkBack summary attached to trend chart focus target.
+  - Added UI test coverage for date range chip selection states.
+
+## Change Log
+
+- 2026-02-11: Senior dev code review completed. High/medium findings fixed. Story advanced from `review` to `done`.
