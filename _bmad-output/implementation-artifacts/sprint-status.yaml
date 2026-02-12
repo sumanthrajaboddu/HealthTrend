@@ -56,6 +56,7 @@ development_status:
   3-1-settings-screen-app-configuration: done
   3-2-google-sign-in-credential-manager: done
   3-3-two-way-google-sheets-sync: done
+  3-4-auto-create-google-sheet: done
   epic-3-retrospective: optional
 
   # Epic 4: Notification Reminders

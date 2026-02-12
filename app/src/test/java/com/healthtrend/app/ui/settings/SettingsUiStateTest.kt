@@ -21,8 +21,8 @@ class SettingsUiStateTest {
         val state = SettingsUiState.Success()
         assertEquals("", state.patientName)
         assertEquals("", state.sheetUrl)
-        assertTrue(state.isSheetUrlValid)
         assertTrue(state.authState is AuthState.SignedOut)
+        assertFalse(state.sheetCreationInProgress)
     }
 
     @Test
@@ -30,23 +30,18 @@ class SettingsUiStateTest {
         val state = SettingsUiState.Success(
             patientName = "Uncle",
             sheetUrl = "https://docs.google.com/spreadsheets/d/abc123",
-            isSheetUrlValid = true,
             authState = AuthState.SignedIn("raja@example.com")
         )
         assertEquals("Uncle", state.patientName)
         assertEquals("https://docs.google.com/spreadsheets/d/abc123", state.sheetUrl)
-        assertTrue(state.isSheetUrlValid)
         val signedIn = state.authState as AuthState.SignedIn
         assertEquals("raja@example.com", signedIn.email)
     }
 
     @Test
-    fun `Success with invalid URL`() {
-        val state = SettingsUiState.Success(
-            sheetUrl = "invalid-url",
-            isSheetUrlValid = false
-        )
-        assertFalse(state.isSheetUrlValid)
+    fun `Success with empty sheet url`() {
+        val state = SettingsUiState.Success(sheetUrl = "")
+        assertEquals("", state.sheetUrl)
     }
 
     // --- AuthState Tests ---

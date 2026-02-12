@@ -2,6 +2,7 @@ package com.healthtrend.app.ui.analytics
 
 import android.graphics.Bitmap
 import android.view.View
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -40,9 +41,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.core.view.drawToBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.core.view.drawToBitmap
+import com.healthtrend.app.ui.theme.HealthTrendTheme
+import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
+import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
 
 /**
  * Analytics screen — replaces AnalyticsPlaceholderScreen.
@@ -66,13 +70,16 @@ fun AnalyticsScreen(
     var chartBoundsInRoot by remember { mutableStateOf<Rect?>(null) }
 
     // PDF Preview mode — replaces analytics content (Story 6.1 Task 4)
+    // Forced light theme so the preview looks identical in light and dark mode.
     val currentExportState = exportState
     if (currentExportState is ExportState.Preview) {
-        PdfPreviewScreen(
-            pdfFile = currentExportState.pdfFile,
-            onBack = viewModel::resetExportState,
-            modifier = modifier
-        )
+        HealthTrendTheme(darkTheme = false) {
+            PdfPreviewScreen(
+                pdfFile = currentExportState.pdfFile,
+                onBack = viewModel::resetExportState,
+                modifier = modifier
+            )
+        }
         return
     }
 
@@ -172,21 +179,29 @@ private fun AnalyticsContent(
             .padding(horizontal = 16.dp)
     ) {
         // Trend chart (Story 5.1 AC #2)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onGloballyPositioned { coordinates ->
-                    onChartBoundsChanged(coordinates.boundsInRoot())
+        // Forced light theme + VicoTheme ensures the chart looks identical in light
+        // and dark mode. ProvideVicoTheme is required because Vico's default theme
+        // reads isSystemInDarkTheme() directly, bypassing MaterialTheme overrides.
+        HealthTrendTheme(darkTheme = false) {
+            ProvideVicoTheme(rememberM3VicoTheme()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .onGloballyPositioned { coordinates ->
+                            onChartBoundsChanged(coordinates.boundsInRoot())
+                        }
+                ) {
+                    TrendChart(
+                        chartData = state.chartData,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics {
+                                contentDescription = talkBackSummary
+                            }
+                    )
                 }
-        ) {
-            TrendChart(
-                chartData = state.chartData,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics {
-                        contentDescription = talkBackSummary
-                    }
-            )
+            }
         }
 
         // Time-of-day breakdown cards (Story 5.2 AC #1)

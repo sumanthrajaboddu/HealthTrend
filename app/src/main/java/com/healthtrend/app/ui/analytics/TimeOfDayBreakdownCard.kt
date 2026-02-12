@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.healthtrend.app.data.model.Severity
 import com.healthtrend.app.data.model.TimeSlot
+import com.healthtrend.app.data.model.adaptiveSoftColor
 
 /**
  * A single breakdown card for one TimeSlot, showing the average severity
@@ -56,7 +57,7 @@ fun TimeOfDayBreakdownCard(
                 contentDescription = talkBackDescription
             },
         colors = CardDefaults.cardColors(
-            containerColor = averageSeverity?.softColor
+            containerColor = averageSeverity?.adaptiveSoftColor
                 ?: MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {

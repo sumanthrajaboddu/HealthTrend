@@ -19,10 +19,12 @@ sealed interface SettingsUiState {
     data class Success(
         val patientName: String = "",
         val sheetUrl: String = "",
-        val isSheetUrlValid: Boolean = true,
         val authState: AuthState = AuthState.SignedOut,
         val globalRemindersEnabled: Boolean = true,
-        val slotReminders: List<SlotReminderState> = emptyList()
+        val slotReminders: List<SlotReminderState> = emptyList(),
+        val sheetCreationInProgress: Boolean = false,
+        /** Diagnostic: temporary error display for sheet creation debugging. */
+        val sheetCreationError: String? = null
     ) : SettingsUiState
 }
 

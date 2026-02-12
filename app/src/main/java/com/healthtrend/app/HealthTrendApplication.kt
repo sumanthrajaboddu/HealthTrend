@@ -8,10 +8,13 @@ import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.core.content.ContextCompat
+import android.util.Log
 import com.healthtrend.app.data.notification.NotificationHelper
 import com.healthtrend.app.data.notification.ReminderScheduler
 import com.healthtrend.app.data.repository.AppSettingsRepository
+import com.healthtrend.app.data.sync.SheetCreationRetrier
 import com.healthtrend.app.data.sync.SyncManager
+import kotlin.coroutines.cancellation.CancellationException
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +35,7 @@ class HealthTrendApplication : Application(), Configuration.Provider {
     @Inject lateinit var reminderScheduler: ReminderScheduler
     @Inject lateinit var appSettingsRepository: AppSettingsRepository
     @Inject lateinit var syncManager: SyncManager
+    @Inject lateinit var sheetCreationRetrier: SheetCreationRetrier
 
     /** Application-scoped coroutine scope for one-shot initialization work. */
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -45,6 +49,11 @@ class HealthTrendApplication : Application(), Configuration.Provider {
         // Schedule all active reminders based on saved settings
         applicationScope.launch {
             initializeReminders()
+        }
+
+        // Retry sheet creation if signed in but no Sheet URL yet (Story 3.4 AC #4)
+        applicationScope.launch {
+            retrySheetCreationIfNeeded()
         }
 
         // Register periodic sync + trigger app launch sync (silent, background)
@@ -72,6 +81,23 @@ class HealthTrendApplication : Application(), Configuration.Provider {
         reminderScheduler.scheduleAllActive(settings)
     }
 
+    /**
+     * If the user is signed in but no Sheet URL exists (e.g., creation failed on sign-in),
+     * retry creating the "HealthTrend" sheet silently. Failure is silent — retries on next launch.
+     * Story 3.4 AC #4.
+     */
+    private suspend fun retrySheetCreationIfNeeded() {
+        try {
+            val created = sheetCreationRetrier.retryIfNeeded()
+            if (created) Log.d(TAG, "Retry: auto-created Google Sheet on app launch")
+        } catch (e: CancellationException) {
+            throw e // Preserve structured concurrency
+        } catch (e: Exception) {
+            // Silent — will retry on next app launch
+            Log.w(TAG, "Retry: sheet creation failed on app launch", e)
+        }
+    }
+
     private fun hasReminderPermissionsAndCapabilities(): Boolean {
         val hasNotificationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(
@@ -90,5 +116,9 @@ class HealthTrendApplication : Application(), Configuration.Provider {
         }
 
         return hasNotificationPermission && canScheduleExact
+    }
+
+    companion object {
+        private const val TAG = "HealthTrendApp"
     }
 }

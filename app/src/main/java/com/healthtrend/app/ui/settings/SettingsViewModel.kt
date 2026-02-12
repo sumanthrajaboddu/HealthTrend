@@ -1,8 +1,10 @@
 package com.healthtrend.app.ui.settings
 
 import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.healthtrend.app.data.auth.GoogleAuthClient
 import com.healthtrend.app.data.auth.GoogleSignInResult
 import com.healthtrend.app.data.model.AppSettings
@@ -12,8 +14,13 @@ import com.healthtrend.app.data.notification.getEnabledForSlot
 import com.healthtrend.app.data.notification.getTimeForSlot
 import com.healthtrend.app.data.notification.parseAlarmTime
 import com.healthtrend.app.data.repository.AppSettingsRepository
+import com.healthtrend.app.data.sync.SheetsClient
+import com.healthtrend.app.data.sync.SyncTrigger
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,16 +28,18 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.LocalTime
+import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * ViewModel for the Settings screen.
- * Manages auto-save for patient name (debounced) and Sheet URL (immediate with validation).
- * Orchestrates Google Sign-In auth flow — no auth logic in composables.
+ * Manages auto-save for patient name (debounced).
+ * Orchestrates Google Sign-In auth flow and auto-creates Google Sheet on first sign-in.
  * Orchestrates reminder configuration — toggle/time changes auto-saved + alarms updated.
  * No save button — changes persist automatically.
  */
@@ -39,7 +48,9 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val appSettingsRepository: AppSettingsRepository,
     private val googleAuthClient: GoogleAuthClient,
-    private val reminderScheduler: ReminderScheduler
+    private val reminderScheduler: ReminderScheduler,
+    private val sheetsClient: SheetsClient,
+    private val syncTrigger: SyncTrigger
 ) : ViewModel() {
 
     /**
@@ -59,6 +70,30 @@ class SettingsViewModel @Inject constructor(
      * Derived from stored email + sign-in/out actions.
      */
     private val _authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
+
+    /**
+     * Tracks whether a Google Sheet is currently being auto-created.
+     * True between the start and end of [ensureSheetExists].
+     */
+    private val _sheetCreationInProgress = MutableStateFlow(false)
+
+    /**
+     * Diagnostic: captures sheet creation error message for on-device debugging.
+     * TODO: Remove after diagnosing sheet creation failure — AC #4 requires silent errors.
+     */
+    private val _sheetCreationError = MutableStateFlow<String?>(null)
+
+    /**
+     * One-shot event: sends a recovery Intent when the Sheets API requires OAuth scope consent.
+     * UI must launch this Intent and call [onSheetAuthRecoveryResult] with the outcome.
+     */
+    private val _authRecoveryEvent = Channel<Intent>(Channel.BUFFERED)
+    val authRecoveryEvent: Flow<Intent> = _authRecoveryEvent.receiveAsFlow()
+
+    /**
+     * Stores the account email for retry after OAuth scope consent is granted.
+     */
+    private var _pendingSheetEmail: String? = null
 
     init {
         // Ensure settings row exists on first access
@@ -86,8 +121,17 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = combine(
         appSettingsRepository.getSettings(),
         _authState,
-        patientNameOverride
-    ) { settings, authState, nameOverride ->
+        patientNameOverride,
+        _sheetCreationInProgress,
+        _sheetCreationError
+    ) { args ->
+        @Suppress("UNCHECKED_CAST")
+        val settings = args[0] as? com.healthtrend.app.data.model.AppSettings
+        val authState = args[1] as AuthState
+        val nameOverride = args[2] as? String
+        val creatingSheet = args[3] as Boolean
+        val creationError = args[4] as? String
+
         if (settings == null) {
             SettingsUiState.Loading
         } else {
@@ -101,10 +145,11 @@ class SettingsViewModel @Inject constructor(
             SettingsUiState.Success(
                 patientName = nameOverride ?: settings.patientName,
                 sheetUrl = settings.sheetUrl,
-                isSheetUrlValid = settings.sheetUrl.isEmpty() || isValidSheetUrl(settings.sheetUrl),
                 authState = resolvedAuthState,
                 globalRemindersEnabled = settings.globalRemindersEnabled,
-                slotReminders = buildSlotReminderStates(settings)
+                slotReminders = buildSlotReminderStates(settings),
+                sheetCreationInProgress = creatingSheet,
+                sheetCreationError = creationError
             )
         }
     }
@@ -121,16 +166,6 @@ class SettingsViewModel @Inject constructor(
     fun onPatientNameChanged(name: String) {
         patientNameOverride.value = name
         patientNameInput.value = name
-    }
-
-    /**
-     * Called when Sheet URL text changes.
-     * Persists immediately (no debounce) with format validation.
-     */
-    fun onSheetUrlChanged(url: String) {
-        viewModelScope.launch {
-            appSettingsRepository.updateSheetUrl(url)
-        }
     }
 
     // ── Reminder Configuration Handlers (AC #2, #3, #4) ────────────
@@ -191,6 +226,7 @@ class SettingsViewModel @Inject constructor(
 
     /**
      * Initiate Google Sign-In via Credential Manager.
+     * On success, auto-creates a "HealthTrend" Google Sheet if no Sheet URL exists yet.
      * Must be called with an Activity context for the Credential Manager UI.
      *
      * @param activityContext Activity context (required by Credential Manager)
@@ -202,6 +238,9 @@ class SettingsViewModel @Inject constructor(
                 is GoogleSignInResult.Success -> {
                     appSettingsRepository.updateGoogleAccount(result.email)
                     _authState.value = AuthState.SignedIn(result.email)
+
+                    // Auto-create Google Sheet if none exists yet (Story 3.4 AC #1)
+                    ensureSheetExists(result.email)
                 }
                 is GoogleSignInResult.Failure -> {
                     _authState.value = AuthState.RefreshFailed
@@ -211,6 +250,66 @@ class SettingsViewModel @Inject constructor(
                     _authState.value = AuthState.SignedOut
                 }
             }
+        }
+    }
+
+    /**
+     * Auto-create a Google Sheet titled "HealthTrend" if no Sheet URL exists.
+     * Skips silently if a URL is already saved (AC #3).
+     *
+     * If the Sheets API scope hasn't been consented yet, catches
+     * [UserRecoverableAuthIOException] and emits the recovery Intent
+     * via [authRecoveryEvent] for the UI to launch the consent screen.
+     * After consent, [onSheetAuthRecoveryResult] retries creation.
+     *
+     * Other failures are silent — retry happens on next app launch (AC #4).
+     */
+    private fun ensureSheetExists(accountEmail: String) {
+        viewModelScope.launch {
+            try {
+                val settings = appSettingsRepository.getSettingsOnce() ?: return@launch
+                if (settings.sheetUrl.isNotEmpty()) return@launch // AC #3: already has a sheet
+
+                _sheetCreationInProgress.value = true
+                _sheetCreationError.value = null
+
+                // Try to find an existing sheet first (cross-device reuse),
+                // fall back to creating a new one if not found.
+                val sheetUrl = withContext(Dispatchers.IO) {
+                    sheetsClient.findSheet(accountEmail, SHEET_TITLE)
+                        ?: sheetsClient.createSheet(accountEmail, SHEET_TITLE)
+                }
+
+                appSettingsRepository.updateSheetUrl(sheetUrl)
+                // Trigger immediate sync to pull existing data from the sheet
+                // (critical for cross-device reuse — user expects to see their data)
+                syncTrigger.enqueueImmediateSync()
+            } catch (e: UserRecoverableAuthIOException) {
+                // OAuth scope consent needed — save email for retry and send recovery intent
+                _pendingSheetEmail = accountEmail
+                e.intent?.let { _authRecoveryEvent.send(it) }
+            } catch (e: CancellationException) {
+                throw e // Preserve structured concurrency
+            } catch (e: Exception) {
+                // AC #4: silent failure — retry on next app launch
+                _sheetCreationError.value = "${e.javaClass.simpleName}: ${e.message}"
+            } finally {
+                _sheetCreationInProgress.value = false
+            }
+        }
+    }
+
+    /**
+     * Called after the OAuth scope consent screen completes.
+     * If the user granted consent, retries sheet creation with the stored email.
+     *
+     * @param success true if RESULT_OK, false if cancelled/denied
+     */
+    fun onSheetAuthRecoveryResult(success: Boolean) {
+        val email = _pendingSheetEmail
+        _pendingSheetEmail = null
+        if (success && email != null) {
+            ensureSheetExists(email)
         }
     }
 
@@ -230,22 +329,12 @@ class SettingsViewModel @Inject constructor(
         /** Debounce delay for patient name auto-save (milliseconds). */
         const val PATIENT_NAME_DEBOUNCE_MS = 500L
 
-        /** Basic Google Sheets URL pattern for validation. */
-        private val SHEETS_URL_PATTERN = Regex(
-            "^https://docs\\.google\\.com/spreadsheets/d/[a-zA-Z0-9_-]+.*$"
-        )
+        /** Title for the auto-created Google Sheet (Story 3.4). */
+        const val SHEET_TITLE = SheetsClient.DEFAULT_SHEET_TITLE
 
         /** 12-hour time formatter for display (e.g., "8:00 AM"). */
         private val TIME_DISPLAY_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofPattern("h:mm a")
-
-        /**
-         * Validates whether a URL looks like a Google Sheets URL.
-         * Returns true for valid format, false for invalid.
-         */
-        fun isValidSheetUrl(url: String): Boolean {
-            return SHEETS_URL_PATTERN.matches(url)
-        }
 
         /**
          * Build the list of [SlotReminderState] from [AppSettings].

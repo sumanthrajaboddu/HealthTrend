@@ -20,6 +20,7 @@ credentialManager = "1.5.0"
 googleId = "1.2.0"
 googleApiClient = "2.8.1"
 googleSheetsApi = "v4-rev20251110-2.0.0"
+googleDriveApi = "v3-rev20251210-2.0.0"
 googleHttpClientGson = "1.45.3"
 workManager = "2.11.1"
 hiltWork = "1.3.0"
@@ -86,6 +87,7 @@ google-id = { group = "com.google.android.libraries.identity.googleid", name = "
 # Google API Client
 google-api-client-android = { group = "com.google.api-client", name = "google-api-client-android", version.ref = "googleApiClient" }
 google-api-services-sheets = { group = "com.google.apis", name = "google-api-services-sheets", version.ref = "googleSheetsApi" }
+google-api-services-drive = { group = "com.google.apis", name = "google-api-services-drive", version.ref = "googleDriveApi" }
 google-http-client-gson = { group = "com.google.http-client", name = "google-http-client-gson", version.ref = "googleHttpClientGson" }
 
 # WorkManager

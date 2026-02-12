@@ -3,12 +3,12 @@ package com.healthtrend.app.ui.settings
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,7 +16,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -26,10 +25,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -41,14 +40,14 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
- * Settings screen — patient name, Google Sheet URL, share link, Google Sign-In.
- * Auto-save: all changes persist immediately (debounced for name, instant for URL).
+ * Settings screen — patient name, Google Sheet status, share link, Google Sign-In.
+ * Auto-save: all changes persist immediately (debounced for name).
+ * Sheet URL is auto-created on sign-in — not manually editable.
  * NO save button, NO confirmation messages.
  *
  * @see SettingsViewModel for business logic and auto-save behavior.
@@ -61,6 +60,20 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // Launcher for Google OAuth scope consent screen (UserRecoverableAuthIOException recovery)
+    val authRecoveryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        viewModel.onSheetAuthRecoveryResult(result.resultCode == Activity.RESULT_OK)
+    }
+
+    // Collect one-shot auth recovery events and launch consent screen
+    LaunchedEffect(Unit) {
+        viewModel.authRecoveryEvent.collect { intent ->
+            authRecoveryLauncher.launch(intent)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -85,7 +98,6 @@ fun SettingsScreen(
                 SettingsContent(
                     state = state,
                     onPatientNameChanged = viewModel::onPatientNameChanged,
-                    onSheetUrlChanged = viewModel::onSheetUrlChanged,
                     onShareSheetLink = { shareSheetLink(context, state.sheetUrl) },
                     onSignIn = {
                         // Credential Manager requires Activity context
@@ -104,13 +116,12 @@ fun SettingsScreen(
 }
 
 /**
- * Settings screen content — scrollable column with text fields, share button, auth, and reminders.
+ * Settings screen content — scrollable column with patient name, sheet status, auth, and reminders.
  */
 @Composable
 private fun SettingsContent(
     state: SettingsUiState.Success,
     onPatientNameChanged: (String) -> Unit,
-    onSheetUrlChanged: (String) -> Unit,
     onShareSheetLink: () -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
@@ -119,13 +130,10 @@ private fun SettingsContent(
     onSlotTimeChanged: (com.healthtrend.app.data.model.TimeSlot, Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Local state for text fields — synced from SettingsUiState but editable locally
+    // Local state for patient name — synced from SettingsUiState but editable locally
     // to avoid cursor jumping from debounced saves.
     var patientNameLocal by rememberSaveable(state.patientName) {
         mutableStateOf(state.patientName)
-    }
-    var sheetUrlLocal by rememberSaveable(state.sheetUrl) {
-        mutableStateOf(state.sheetUrl)
     }
 
     Column(
@@ -160,7 +168,7 @@ private fun SettingsContent(
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Words,
-                imeAction = ImeAction.Next
+                imeAction = ImeAction.Done
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -180,78 +188,13 @@ private fun SettingsContent(
             modifier = Modifier.semantics { heading() }
         )
 
-        // --- Google Sheet URL Field ---
-        val isUrlInvalid = !state.isSheetUrlValid
-
-        OutlinedTextField(
-            value = sheetUrlLocal,
-            onValueChange = { newValue ->
-                sheetUrlLocal = newValue
-                onSheetUrlChanged(newValue)
-            },
-            label = { Text("Google Sheet URL") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Filled.TableChart,
-                    contentDescription = null // decorative
-                )
-            },
-            isError = isUrlInvalid,
-            supportingText = if (isUrlInvalid) {
-                { Text("Enter a valid Google Sheets URL") }
-            } else {
-                null
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Uri,
-                imeAction = ImeAction.Done
-            ),
-            colors = if (isUrlInvalid) {
-                OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.error,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.error
-                )
-            } else {
-                OutlinedTextFieldDefaults.colors()
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics {
-                    contentDescription = buildString {
-                        append("Google Sheet URL, ${sheetUrlLocal.ifEmpty { "empty" }}. Edit text.")
-                        if (isUrlInvalid) {
-                            append(" URL is invalid.")
-                        }
-                    }
-                }
+        // --- Google Sheet Status (read-only, auto-created on sign-in) ---
+        SheetStatusSection(
+            sheetUrl = state.sheetUrl,
+            sheetCreationInProgress = state.sheetCreationInProgress,
+            sheetCreationError = state.sheetCreationError,
+            onShareSheetLink = onShareSheetLink
         )
-
-        // --- Share Sheet Link Button ---
-        Button(
-            onClick = onShareSheetLink,
-            enabled = state.sheetUrl.isNotEmpty(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics {
-                    contentDescription = if (state.sheetUrl.isNotEmpty()) {
-                        "Share Sheet link. Double tap to share."
-                    } else {
-                        "Share Sheet link. Disabled. Enter a Sheet URL first."
-                    }
-                }
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Share,
-                contentDescription = null, // button semantics covers this
-                modifier = Modifier.padding(end = 8.dp)
-            )
-            Text("Share Sheet Link")
-        }
 
         // --- Divider before Auth Section ---
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -274,6 +217,98 @@ private fun SettingsContent(
             onSlotToggled = onSlotReminderToggled,
             onSlotTimeChanged = onSlotTimeChanged
         )
+    }
+}
+
+/**
+ * Read-only Google Sheet status display (Story 3.4).
+ * Shows Sheet URL when auto-created, "Creating sheet..." during creation,
+ * or "Sheet will be created on sign-in" if not yet started.
+ * Share button enabled when a Sheet URL exists.
+ */
+@Composable
+private fun SheetStatusSection(
+    sheetUrl: String,
+    sheetCreationInProgress: Boolean,
+    sheetCreationError: String?,
+    onShareSheetLink: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // --- Sheet URL, creating state, or placeholder ---
+        if (sheetUrl.isNotEmpty()) {
+            Text(
+                text = "Google Sheet",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = sheetUrl,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                modifier = Modifier.semantics {
+                    contentDescription = "Google Sheet URL. $sheetUrl. Read only."
+                }
+            )
+        } else if (sheetCreationInProgress) {
+            Text(
+                text = "Creating sheet\u2026",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.semantics {
+                    contentDescription = "Google Sheet, creating now."
+                }
+            )
+        } else {
+            Text(
+                text = "Sheet will be created on sign-in",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.semantics {
+                    contentDescription = "Google Sheet, not created yet."
+                }
+            )
+        }
+
+        // --- Diagnostic: show sheet creation error (TODO: remove after debugging) ---
+        if (sheetCreationError != null) {
+            Text(
+                text = "DEBUG: $sheetCreationError",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                maxLines = 4
+            )
+        }
+
+        // --- Share Sheet Link Button ---
+        Button(
+            onClick = onShareSheetLink,
+            enabled = sheetUrl.isNotEmpty(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics {
+                    contentDescription = if (sheetUrl.isNotEmpty()) {
+                        "Share Sheet link. Double tap to share."
+                    } else {
+                        "Share Sheet link. Disabled. Sign in to create a sheet first."
+                    }
+                }
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Share,
+                contentDescription = null, // button semantics covers this
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Text("Share Sheet Link")
+        }
     }
 }
 

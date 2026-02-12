@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import android.content.Context
 import com.healthtrend.app.data.auth.FakeGoogleAuthClient
 import com.healthtrend.app.data.auth.GoogleSignInResult
+import com.healthtrend.app.data.sync.FakeSheetsClient
+import com.healthtrend.app.data.sync.FakeSyncTrigger
 import org.mockito.Mockito.mock
 import com.healthtrend.app.data.local.FakeAppSettingsDao
 import com.healthtrend.app.data.model.AppSettings
@@ -19,14 +21,13 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 /**
  * Unit tests for SettingsViewModel.
- * Uses FakeAppSettingsDao + FakeGoogleAuthClient + FakeReminderScheduler for deterministic testing.
+ * Uses FakeAppSettingsDao + FakeGoogleAuthClient + FakeReminderScheduler + FakeSheetsClient.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -36,6 +37,8 @@ class SettingsViewModelTest {
     private lateinit var repository: AppSettingsRepository
     private lateinit var fakeAuthClient: FakeGoogleAuthClient
     private lateinit var fakeScheduler: FakeReminderScheduler
+    private lateinit var fakeSheetsClient: FakeSheetsClient
+    private lateinit var fakeSyncTrigger: FakeSyncTrigger
 
     @Before
     fun setup() {
@@ -44,6 +47,8 @@ class SettingsViewModelTest {
         repository = AppSettingsRepository(fakeDao)
         fakeAuthClient = FakeGoogleAuthClient()
         fakeScheduler = FakeReminderScheduler()
+        fakeSheetsClient = FakeSheetsClient()
+        fakeSyncTrigger = FakeSyncTrigger()
     }
 
     @After
@@ -52,7 +57,7 @@ class SettingsViewModelTest {
     }
 
     private fun createViewModel(): SettingsViewModel {
-        return SettingsViewModel(repository, fakeAuthClient, fakeScheduler)
+        return SettingsViewModel(repository, fakeAuthClient, fakeScheduler, fakeSheetsClient, fakeSyncTrigger)
     }
 
     // --- Initial State Tests ---
@@ -67,7 +72,6 @@ class SettingsViewModelTest {
             val success = state as SettingsUiState.Success
             assertEquals("", success.patientName)
             assertEquals("", success.sheetUrl)
-            assertTrue(success.isSheetUrlValid)
             assertTrue(success.authState is AuthState.SignedOut)
         }
     }
@@ -87,7 +91,6 @@ class SettingsViewModelTest {
             val state = expectMostRecentItem() as SettingsUiState.Success
             assertEquals("Uncle", state.patientName)
             assertEquals("https://docs.google.com/spreadsheets/d/abc123", state.sheetUrl)
-            assertTrue(state.isSheetUrlValid)
         }
     }
 
@@ -137,102 +140,6 @@ class SettingsViewModelTest {
             val state = expectMostRecentItem() as SettingsUiState.Success
             assertEquals("Uncle", state.patientName)
         }
-    }
-
-    // --- Sheet URL Auto-Save Tests ---
-
-    @Test
-    fun `onSheetUrlChanged persists immediately`() = runTest {
-        val viewModel = createViewModel()
-
-        viewModel.uiState.test {
-            expectMostRecentItem() // initial
-
-            val url = "https://docs.google.com/spreadsheets/d/abc123"
-            viewModel.onSheetUrlChanged(url)
-
-            val state = expectMostRecentItem() as SettingsUiState.Success
-            assertEquals(url, state.sheetUrl)
-            assertTrue(state.isSheetUrlValid)
-        }
-    }
-
-    @Test
-    fun `invalid sheet url shows validation error`() = runTest {
-        val viewModel = createViewModel()
-
-        viewModel.uiState.test {
-            expectMostRecentItem() // initial
-
-            viewModel.onSheetUrlChanged("not-a-valid-url")
-
-            val state = expectMostRecentItem() as SettingsUiState.Success
-            assertEquals("not-a-valid-url", state.sheetUrl)
-            assertFalse(state.isSheetUrlValid)
-        }
-    }
-
-    @Test
-    fun `empty sheet url is considered valid`() = runTest {
-        val viewModel = createViewModel()
-
-        viewModel.uiState.test {
-            val state = expectMostRecentItem() as SettingsUiState.Success
-            assertEquals("", state.sheetUrl)
-            assertTrue(state.isSheetUrlValid)
-        }
-    }
-
-    // --- URL Validation Tests ---
-
-    @Test
-    fun `isValidSheetUrl accepts valid Google Sheets URL`() {
-        assertTrue(
-            SettingsViewModel.isValidSheetUrl(
-                "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit"
-            )
-        )
-    }
-
-    @Test
-    fun `isValidSheetUrl accepts minimal valid URL`() {
-        assertTrue(
-            SettingsViewModel.isValidSheetUrl(
-                "https://docs.google.com/spreadsheets/d/abc123"
-            )
-        )
-    }
-
-    @Test
-    fun `isValidSheetUrl rejects non-Google URL`() {
-        assertFalse(
-            SettingsViewModel.isValidSheetUrl("https://example.com/sheets")
-        )
-    }
-
-    @Test
-    fun `isValidSheetUrl rejects random string`() {
-        assertFalse(
-            SettingsViewModel.isValidSheetUrl("not-a-url")
-        )
-    }
-
-    @Test
-    fun `isValidSheetUrl rejects http without s`() {
-        assertFalse(
-            SettingsViewModel.isValidSheetUrl(
-                "http://docs.google.com/spreadsheets/d/abc123"
-            )
-        )
-    }
-
-    @Test
-    fun `isValidSheetUrl rejects google docs non-spreadsheet URL`() {
-        assertFalse(
-            SettingsViewModel.isValidSheetUrl(
-                "https://docs.google.com/document/d/abc123"
-            )
-        )
     }
 
     // --- Auth Sign-In Tests ---
@@ -335,23 +242,6 @@ class SettingsViewModelTest {
         }
     }
 
-    @Test
-    fun `updating sheet url does not affect patient name`() = runTest {
-        fakeDao.insertOrReplace(AppSettings(patientName = "Uncle"))
-
-        val viewModel = createViewModel()
-
-        viewModel.uiState.test {
-            expectMostRecentItem() // initial
-
-            viewModel.onSheetUrlChanged("https://docs.google.com/spreadsheets/d/xyz789")
-
-            val state = expectMostRecentItem() as SettingsUiState.Success
-            assertEquals("Uncle", state.patientName)
-            assertEquals("https://docs.google.com/spreadsheets/d/xyz789", state.sheetUrl)
-        }
-    }
-
     // --- AC #5: Share Sheet Link — state exposes sheetUrl for share intent ---
 
     @Test
@@ -365,7 +255,371 @@ class SettingsViewModelTest {
             val state = expectMostRecentItem() as SettingsUiState.Success
             assertEquals(shareUrl, state.sheetUrl)
             assertTrue(state.sheetUrl.isNotEmpty())
-            // Screen uses state.sheetUrl for ShareUtils.createShareSheetIntent(state.sheetUrl)
+        }
+    }
+
+    // ── Story 3.4: Auto-Create Google Sheet Tests ──────────────────
+
+    @Test
+    fun `onSignIn success auto-creates sheet when sheetUrl is empty`() = runTest {
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSignIn(mockContext)
+
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            // Sheet was auto-created
+            assertEquals(1, fakeSheetsClient.createdSheets.size)
+            assertEquals("raja@example.com", fakeSheetsClient.createdSheets[0].first)
+            assertEquals("HealthTrend", fakeSheetsClient.createdSheets[0].second)
+            // URL saved to settings
+            assertEquals(fakeSheetsClient.createSheetReturnUrl, state.sheetUrl)
+        }
+    }
+
+    @Test
+    fun `onSignIn success skips sheet creation when sheetUrl already exists`() = runTest {
+        val existingUrl = "https://docs.google.com/spreadsheets/d/existing-sheet"
+        fakeDao.insertOrReplace(AppSettings(sheetUrl = existingUrl))
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSignIn(mockContext)
+
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            // No sheet created — existing URL preserved
+            assertEquals(0, fakeSheetsClient.createdSheets.size)
+            assertEquals(existingUrl, state.sheetUrl)
+        }
+    }
+
+    @Test
+    fun `onSignIn success still sets SignedIn when sheet creation fails`() = runTest {
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        fakeSheetsClient.createSheetShouldFail = true
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSignIn(mockContext)
+
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            // Auth succeeded despite sheet creation failure (AC #4)
+            assertTrue(state.authState is AuthState.SignedIn)
+            assertEquals("raja@example.com", (state.authState as AuthState.SignedIn).email)
+            // Sheet URL remains empty — will retry on next launch
+            assertEquals("", state.sheetUrl)
+        }
+    }
+
+    @Test
+    fun `onSignIn failure does not attempt sheet creation`() = runTest {
+        fakeAuthClient.signInResult = GoogleSignInResult.Failure("Network error")
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onSignIn(mockContext)
+            expectMostRecentItem()
+
+            assertEquals(0, fakeSheetsClient.createdSheets.size)
+        }
+    }
+
+    @Test
+    fun `onSignIn cancelled does not attempt sheet creation`() = runTest {
+        fakeAuthClient.signInResult = GoogleSignInResult.Cancelled
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onSignIn(mockContext)
+            expectMostRecentItem()
+
+            assertEquals(0, fakeSheetsClient.createdSheets.size)
+        }
+    }
+
+    @Test
+    fun `sheet title constant is HealthTrend`() {
+        assertEquals("HealthTrend", SettingsViewModel.SHEET_TITLE)
+    }
+
+    @Test
+    fun `onSignIn auto-creates sheet with correct title`() = runTest {
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onSignIn(mockContext)
+            expectMostRecentItem()
+
+            // Verify sheet created with the correct title
+            assertTrue(fakeSheetsClient.createdSheets.isNotEmpty())
+            assertEquals("HealthTrend", fakeSheetsClient.createdSheets[0].second)
+        }
+    }
+
+    // ── Cross-device Sheet Reuse: findSheet before createSheet ────
+
+    @Test
+    fun `onSignIn reuses existing sheet found via findSheet`() = runTest {
+        val existingDriveUrl = "https://docs.google.com/spreadsheets/d/drive-found-id"
+        fakeSheetsClient.findSheetReturnUrl = existingDriveUrl
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSignIn(mockContext)
+
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            // findSheet was called
+            assertEquals(1, fakeSheetsClient.findSheetCalls.size)
+            assertEquals("raja@example.com", fakeSheetsClient.findSheetCalls[0].first)
+            assertEquals("HealthTrend", fakeSheetsClient.findSheetCalls[0].second)
+            // No sheet created — reused existing one
+            assertEquals(0, fakeSheetsClient.createdSheets.size)
+            // URL from findSheet saved to settings
+            assertEquals(existingDriveUrl, state.sheetUrl)
+        }
+    }
+
+    @Test
+    fun `onSignIn creates new sheet when findSheet returns null`() = runTest {
+        fakeSheetsClient.findSheetReturnUrl = null // no existing sheet
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSignIn(mockContext)
+
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            // findSheet was called first
+            assertEquals(1, fakeSheetsClient.findSheetCalls.size)
+            // Then createSheet was called
+            assertEquals(1, fakeSheetsClient.createdSheets.size)
+            assertEquals(fakeSheetsClient.createSheetReturnUrl, state.sheetUrl)
+        }
+    }
+
+    @Test
+    fun `onSignIn handles findSheet failure gracefully`() = runTest {
+        fakeSheetsClient.findSheetShouldFail = true
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSignIn(mockContext)
+
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            // Auth succeeded despite findSheet failure (silent failure)
+            assertTrue(state.authState is AuthState.SignedIn)
+            // Sheet URL remains empty — will retry on next launch
+            assertEquals("", state.sheetUrl)
+            // No createSheet call since findSheet failed first
+            assertEquals(0, fakeSheetsClient.createdSheets.size)
+        }
+    }
+
+    // ── Immediate Sync After Sheet Setup ──────────────────────────
+
+    @Test
+    fun `onSignIn triggers immediate sync after sheet is found`() = runTest {
+        fakeSheetsClient.findSheetReturnUrl = "https://docs.google.com/spreadsheets/d/found"
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onSignIn(mockContext)
+            expectMostRecentItem()
+
+            assertEquals(1, fakeSyncTrigger.syncEnqueueCount)
+        }
+    }
+
+    @Test
+    fun `onSignIn triggers immediate sync after sheet is created`() = runTest {
+        fakeSheetsClient.findSheetReturnUrl = null // not found — will create
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onSignIn(mockContext)
+            expectMostRecentItem()
+
+            assertEquals(1, fakeSyncTrigger.syncEnqueueCount)
+        }
+    }
+
+    @Test
+    fun `onSignIn does not trigger sync when sheet setup fails`() = runTest {
+        fakeSheetsClient.findSheetShouldFail = true
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onSignIn(mockContext)
+            expectMostRecentItem()
+
+            assertEquals(0, fakeSyncTrigger.syncEnqueueCount)
+        }
+    }
+
+    @Test
+    fun `onSignIn does not trigger sync when sheet URL already exists`() = runTest {
+        fakeDao.insertOrReplace(AppSettings(sheetUrl = "https://docs.google.com/spreadsheets/d/existing"))
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+            viewModel.onSignIn(mockContext)
+            expectMostRecentItem()
+
+            // No sync triggered — sheet already existed locally, ensureSheetExists returned early
+            assertEquals(0, fakeSyncTrigger.syncEnqueueCount)
+        }
+    }
+
+    // ── Story 3.4: Sheet Creation In-Progress State ───────────────
+
+    @Test
+    fun `initial state has sheetCreationInProgress false`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            assertFalse(state.sheetCreationInProgress)
+        }
+    }
+
+    @Test
+    fun `sheetCreationInProgress is false after sheet creation completes`() = runTest {
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.onSignIn(mockContext)
+        // Allow IO dispatcher to complete (fakes are instant, just needs thread switch)
+        @Suppress("BlockingMethodInNonBlockingContext")
+        Thread.sleep(200)
+
+        viewModel.uiState.test {
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            // After completion: in-progress flag is cleared, URL is set
+            assertFalse(state.sheetCreationInProgress)
+            assertEquals(fakeSheetsClient.createSheetReturnUrl, state.sheetUrl)
+        }
+    }
+
+    @Test
+    fun `sheetCreationInProgress is false after sheet creation fails`() = runTest {
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        fakeSheetsClient.createSheetShouldFail = true
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.onSignIn(mockContext)
+        // Allow IO dispatcher to complete (fakes are instant, just needs thread switch)
+        @Suppress("BlockingMethodInNonBlockingContext")
+        Thread.sleep(200)
+
+        viewModel.uiState.test {
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            // After failure: flag cleared, URL still empty
+            assertFalse(state.sheetCreationInProgress)
+            assertEquals("", state.sheetUrl)
+        }
+    }
+
+    @Test
+    fun `sheetCreationInProgress is false when sheet already exists`() = runTest {
+        val existingUrl = "https://docs.google.com/spreadsheets/d/existing"
+        fakeDao.insertOrReplace(AppSettings(sheetUrl = existingUrl))
+        fakeAuthClient.signInResult = GoogleSignInResult.Success(
+            email = "raja@example.com",
+            idToken = "token123"
+        )
+        val mockContext = mock(Context::class.java)
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            expectMostRecentItem()
+
+            viewModel.onSignIn(mockContext)
+
+            val state = expectMostRecentItem() as SettingsUiState.Success
+            // Never set to true because sheet already existed
+            assertFalse(state.sheetCreationInProgress)
         }
     }
 

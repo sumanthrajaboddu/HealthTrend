@@ -4,8 +4,12 @@ import android.content.Context
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
+import com.google.api.services.drive.Drive
+import com.google.api.services.drive.DriveScopes
 import com.google.api.services.sheets.v4.Sheets
 import com.google.api.services.sheets.v4.SheetsScopes
+import com.google.api.services.sheets.v4.model.Spreadsheet
+import com.google.api.services.sheets.v4.model.SpreadsheetProperties
 import com.google.api.services.sheets.v4.model.ValueRange
 import com.healthtrend.app.data.model.Severity
 import com.healthtrend.app.data.model.TimeSlot
@@ -42,6 +46,11 @@ data class SheetSlotData(
  */
 interface SheetsClient {
 
+    companion object {
+        /** Canonical sheet title used for auto-creation (Story 3.4). */
+        const val DEFAULT_SHEET_TITLE = "HealthTrend"
+    }
+
     /**
      * Read all data rows from the Sheet.
      * Reads columns A through I (Date, 4 severities, 4 timestamps).
@@ -72,6 +81,27 @@ interface SheetsClient {
      * @param rowData List of values for the new row
      */
     suspend fun appendRow(sheetUrl: String, accountEmail: String, rowData: List<Any?>)
+
+    /**
+     * Create a new Google Sheet with the given title and header row.
+     * Header row: Date, Morning, Afternoon, Evening, Night.
+     *
+     * @param accountEmail Google account email for authentication
+     * @param title Sheet title (e.g., "HealthTrend")
+     * @return Full Google Sheet URL
+     */
+    suspend fun createSheet(accountEmail: String, title: String): String
+
+    /**
+     * Search Google Drive for an existing spreadsheet with the given title.
+     * Returns the most recently modified match, or null if none found.
+     * Used to reuse an existing sheet across devices instead of creating duplicates.
+     *
+     * @param accountEmail Google account email for authentication
+     * @param title Sheet title to search for (e.g., "HealthTrend")
+     * @return Full Google Sheet URL if found, null otherwise
+     */
+    suspend fun findSheet(accountEmail: String, title: String): String?
 }
 
 /**
@@ -97,20 +127,46 @@ class GoogleSheetsService @Inject constructor(
 ) : SheetsClient {
 
     /**
-     * Build authenticated Sheets API client for the given account.
+     * OAuth2 scopes used for all API calls.
+     * - SPREADSHEETS: read/write sheet data
+     * - DRIVE_METADATA_READONLY: search Drive for existing sheets by name
+     */
+    private val oauthScopes = listOf(
+        SheetsScopes.SPREADSHEETS,
+        DriveScopes.DRIVE_METADATA_READONLY
+    )
+
+    /**
+     * Build authenticated credential for the given account.
      * GoogleAccountCredential uses AccountManager for silent token refresh.
      */
-    private fun buildSheetsService(accountEmail: String): Sheets {
-        val credential = GoogleAccountCredential.usingOAuth2(
-            context,
-            listOf(SheetsScopes.SPREADSHEETS)
-        )
+    private fun buildCredential(accountEmail: String): GoogleAccountCredential {
+        val credential = GoogleAccountCredential.usingOAuth2(context, oauthScopes)
         credential.selectedAccountName = accountEmail
+        return credential
+    }
 
+    /**
+     * Build authenticated Sheets API client for the given account.
+     */
+    private fun buildSheetsService(accountEmail: String): Sheets {
         val transport = NetHttpTransport()
         val jsonFactory = GsonFactory.getDefaultInstance()
 
-        return Sheets.Builder(transport, jsonFactory, credential)
+        return Sheets.Builder(transport, jsonFactory, buildCredential(accountEmail))
+            .setApplicationName(APP_NAME)
+            .build()
+    }
+
+    /**
+     * Build authenticated Drive API client for the given account.
+     * Used for searching existing spreadsheets by name.
+     */
+    private fun buildDriveService(accountEmail: String): Drive {
+        val transport = NetHttpTransport()
+        val jsonFactory = GsonFactory.getDefaultInstance()
+
+        return Drive.Builder(transport, jsonFactory, buildCredential(accountEmail))
             .setApplicationName(APP_NAME)
             .build()
     }
@@ -173,6 +229,54 @@ class GoogleSheetsService @Inject constructor(
         }
     }
 
+    override suspend fun createSheet(accountEmail: String, title: String): String {
+        return withContext(Dispatchers.IO) {
+            val service = buildSheetsService(accountEmail)
+
+            // Create a new spreadsheet with the given title
+            val spreadsheet = Spreadsheet().apply {
+                properties = SpreadsheetProperties().apply {
+                    this.title = title
+                }
+            }
+
+            val created = service.spreadsheets().create(spreadsheet).execute()
+            val spreadsheetId = created.spreadsheetId
+
+            // Write header row: Date + TimeSlot display names (never hardcode slot labels)
+            val headerRow = listOf("Date") + TimeSlot.entries.map { it.displayName }
+            val headerBody = ValueRange().setValues(listOf(headerRow))
+            service.spreadsheets().values()
+                .update(spreadsheetId, "$SHEET_NAME!A1:E1", headerBody)
+                .setValueInputOption("RAW")
+                .execute()
+
+            "$SHEET_URL_PREFIX$spreadsheetId"
+        }
+    }
+
+    override suspend fun findSheet(accountEmail: String, title: String): String? {
+        return withContext(Dispatchers.IO) {
+            val driveService = buildDriveService(accountEmail)
+
+            // Search for spreadsheets matching the exact title that are not trashed.
+            // Order by modifiedTime desc to prefer the most recently modified one.
+            val query = "name = '$title' " +
+                "and mimeType = 'application/vnd.google-apps.spreadsheet' " +
+                "and trashed = false"
+
+            val result = driveService.files().list()
+                .setQ(query)
+                .setFields("files(id, name, modifiedTime)")
+                .setOrderBy("modifiedTime desc")
+                .setPageSize(1)
+                .execute()
+
+            val file = result.files?.firstOrNull() ?: return@withContext null
+            "$SHEET_URL_PREFIX${file.id}"
+        }
+    }
+
     /**
      * Parse a raw API row into a SheetRow.
      * @param row Raw row data from the API (List of cell values)
@@ -210,6 +314,7 @@ class GoogleSheetsService @Inject constructor(
         private const val APP_NAME = "HealthTrend"
         private const val SHEET_NAME = "Sheet1"
         private const val DATA_RANGE = "Sheet1!A:I"
+        private const val SHEET_URL_PREFIX = "https://docs.google.com/spreadsheets/d/"
 
         /**
          * Column mapping for TimeSlot to Sheet column letters.

@@ -150,6 +150,7 @@ dependencies {
     // Google API Client + Sheets API v4 (cell-level reads/writes)
     implementation(libs.google.api.client.android)
     implementation(libs.google.api.services.sheets)
+    implementation(libs.google.api.services.drive)
     implementation(libs.google.http.client.gson)
 
     // WorkManager (CoroutineWorker for sync)

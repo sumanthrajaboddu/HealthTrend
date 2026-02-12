@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.healthtrend.app.data.model.HealthEntry
 import com.healthtrend.app.data.model.Severity
 import com.healthtrend.app.data.model.TimeSlot
+import com.healthtrend.app.data.model.adaptiveSoftColor
 import com.healthtrend.app.ui.theme.HealthTrendAnimation
 
 /**
@@ -62,7 +63,7 @@ fun TimeSlotTile(
 ) {
     val isLogged = entry != null
     val neutralColor = MaterialTheme.colorScheme.surfaceContainerLow
-    val targetColor = if (isLogged) entry!!.severity.softColor else neutralColor
+    val targetColor = if (isLogged) entry!!.severity.adaptiveSoftColor else neutralColor
 
     // Check system animations setting
     val context = LocalContext.current

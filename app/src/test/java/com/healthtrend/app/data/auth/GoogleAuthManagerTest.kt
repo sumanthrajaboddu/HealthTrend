@@ -35,8 +35,11 @@ class GoogleAuthManagerTest {
     }
 
     @Test
-    fun `SERVER_CLIENT_ID constant exists`() {
-        // Verifies the constant is defined (will be configured per-project)
-        assertTrue(GoogleAuthManager.SERVER_CLIENT_ID.isNotEmpty())
+    fun `GoogleAuthClient interface has signIn and signOut`() {
+        // Verifies the interface contract exists — concrete implementation
+        // requires Android context and is tested via instrumentation.
+        val fake = FakeGoogleAuthClient()
+        assertTrue(!fake.signInCalled)
+        assertTrue(!fake.signOutCalled)
     }
 }

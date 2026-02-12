@@ -57,6 +57,28 @@ class SeverityTest {
     }
 
     @Test
+    fun `severity dark soft colors are defined and differ from light soft colors`() {
+        Severity.entries.forEach { severity ->
+            assertNotEquals(
+                "Dark soft color should differ from light soft color for ${severity.name}",
+                severity.softColor,
+                severity.softColorDark
+            )
+        }
+    }
+
+    @Test
+    fun `severity dark soft colors differ from primary colors`() {
+        Severity.entries.forEach { severity ->
+            assertNotEquals(
+                "Dark soft color should differ from primary for ${severity.name}",
+                severity.color,
+                severity.softColorDark
+            )
+        }
+    }
+
+    @Test
     fun `each severity has unique numeric value`() {
         val numericValues = Severity.entries.map { it.numericValue }
         assertEquals(numericValues.size, numericValues.toSet().size)

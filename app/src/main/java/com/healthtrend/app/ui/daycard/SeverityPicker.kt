@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.healthtrend.app.data.model.Severity
+import com.healthtrend.app.data.model.adaptiveSoftColor
 
 /**
  * Inline severity picker — NOT a modal, NOT a bottom sheet.
@@ -124,7 +125,7 @@ private fun SeverityOption(
                     stateDescription = a11yState
                 }
             },
-        colors = CardDefaults.cardColors(containerColor = severity.softColor),
+        colors = CardDefaults.cardColors(containerColor = severity.adaptiveSoftColor),
         border = if (isSelected) {
             BorderStroke(2.dp, severity.color)
         } else {

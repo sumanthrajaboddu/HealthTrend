@@ -21,6 +21,24 @@ class FakeSheetsClient : SheetsClient {
     /** If true, readSheet and writeCell throw an exception. */
     var shouldFail = false
 
+    /** If true, createSheet throws an exception. */
+    var createSheetShouldFail = false
+
+    /** Tracks createSheet calls: list of (accountEmail, title) pairs. */
+    val createdSheets = mutableListOf<Pair<String, String>>()
+
+    /** URL returned by createSheet. */
+    var createSheetReturnUrl = "https://docs.google.com/spreadsheets/d/fake-id-123"
+
+    /** If true, findSheet throws an exception. */
+    var findSheetShouldFail = false
+
+    /** Tracks findSheet calls: list of (accountEmail, title) pairs. */
+    val findSheetCalls = mutableListOf<Pair<String, String>>()
+
+    /** URL returned by findSheet. null means "not found". */
+    var findSheetReturnUrl: String? = null
+
     override suspend fun readSheet(sheetUrl: String, accountEmail: String): List<SheetRow> {
         if (shouldFail) throw RuntimeException("Simulated API failure")
         return rows.toList()
@@ -75,10 +93,28 @@ class FakeSheetsClient : SheetsClient {
         }
     }
 
+    override suspend fun createSheet(accountEmail: String, title: String): String {
+        if (createSheetShouldFail) throw RuntimeException("Simulated createSheet failure")
+        createdSheets.add(accountEmail to title)
+        return createSheetReturnUrl
+    }
+
+    override suspend fun findSheet(accountEmail: String, title: String): String? {
+        if (findSheetShouldFail) throw RuntimeException("Simulated findSheet failure")
+        findSheetCalls.add(accountEmail to title)
+        return findSheetReturnUrl
+    }
+
     fun reset() {
         rows.clear()
         cellWrites.clear()
         appendedRows.clear()
+        createdSheets.clear()
+        findSheetCalls.clear()
         shouldFail = false
+        createSheetShouldFail = false
+        createSheetReturnUrl = "https://docs.google.com/spreadsheets/d/fake-id-123"
+        findSheetShouldFail = false
+        findSheetReturnUrl = null
     }
 }

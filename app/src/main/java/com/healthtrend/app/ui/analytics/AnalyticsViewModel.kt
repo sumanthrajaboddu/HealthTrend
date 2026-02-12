@@ -1,8 +1,8 @@
 package com.healthtrend.app.ui.analytics
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import android.graphics.Bitmap
 import com.healthtrend.app.data.export.PdfGenerator
 import com.healthtrend.app.data.model.HealthEntry
 import com.healthtrend.app.data.model.Severity
@@ -189,6 +189,9 @@ class AnalyticsViewModel @Inject constructor(
      * Trigger PDF export for the current date range (Story 6.1 AC #1, #2).
      * Runs on Dispatchers.IO — NOT Main thread (subtask 3.4).
      * Collects current entries, slot averages, patient name, and passes to PdfGenerator.
+     *
+     * The chart is always rendered in forced light theme on the Analytics screen,
+     * so the captured bitmap looks consistent regardless of the app's current theme.
      */
     fun onExportPdf(chartBitmap: Bitmap? = null) {
         if (_exportState.value is ExportState.Generating) return // prevent double-tap (subtask 3.3)
