@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthTrend — Design Direction Mockups</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Roboto', 'Segoe UI', system-ui, sans-serif; background: #f0f0f0; color: #1C1B1F; }
+
+  /* Header */
+  .page-header { background: #1C1B1F; color: #fff; padding: 32px 40px; text-align: center; }
+  .page-header h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
+  .page-header p { font-size: 14px; opacity: 0.7; max-width: 600px; margin: 0 auto; }
+
+  /* Navigation tabs */
+  .tab-nav { display: flex; justify-content: center; gap: 8px; padding: 20px 16px; background: #fff; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; }
+  .tab-btn { padding: 10px 20px; border: 2px solid #CAC4D0; border-radius: 24px; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #49454F; transition: all 0.2s; }
+  .tab-btn:hover { background: #F5F0F4; }
+  .tab-btn.active { background: #6750A4; color: #fff; border-color: #6750A4; }
+
+  /* Panels */
+  .panel { display: none; padding: 32px 16px; max-width: 1200px; margin: 0 auto; }
+  .panel.active { display: block; }
+
+  /* Phone frame */
+  .phone-frame { width: 375px; height: 780px; background: #FFFBFE; border-radius: 36px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.15), 0 0 0 2px #1C1B1F; margin: 0 auto; position: relative; }
+  .phone-status-bar { height: 44px; background: #FFFBFE; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; font-size: 12px; font-weight: 500; color: #1C1B1F; }
+  .phone-content { height: calc(100% - 44px - 80px); overflow-y: auto; }
+  .phone-bottom-nav { height: 80px; background: #FFFBFE; border-top: 1px solid #CAC4D0; display: flex; align-items: center; justify-content: space-around; padding: 0 16px; position: absolute; bottom: 0; left: 0; right: 0; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 8px 16px; border-radius: 16px; }
+  .nav-item.active { }
+  .nav-item .nav-icon { width: 24px; height: 24px; border-radius: 12px; }
+  .nav-item.active .nav-icon { background: #E8DEF8; width: 56px; height: 32px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+  .nav-item .nav-label { font-size: 12px; font-weight: 500; color: #49454F; }
+  .nav-item.active .nav-label { color: #6750A4; }
+
+  /* Direction descriptions */
+  .direction-info { max-width: 600px; margin: 0 auto 24px; text-align: center; }
+  .direction-info h2 { font-size: 24px; font-weight: 400; margin-bottom: 8px; }
+  .direction-info p { font-size: 14px; color: #49454F; line-height: 1.6; }
+  .direction-info .tag { display: inline-block; background: #E8DEF8; color: #6750A4; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; margin: 8px 4px 0; }
+
+  /* Layout helpers */
+  .mockup-row { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; align-items: flex-start; }
+  .mockup-col { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .mockup-label { font-size: 13px; color: #49454F; font-weight: 500; background: #fff; padding: 6px 16px; border-radius: 12px; }
+
+  /* =================== DIRECTION A: Clean Cards =================== */
+  .dir-a .top-bar { padding: 16px 24px 8px; }
+  .dir-a .date-header { font-size: 28px; font-weight: 400; color: #1C1B1F; }
+  .dir-a .date-sub { font-size: 14px; color: #49454F; margin-top: 2px; }
+  .dir-a .day-nav { display: flex; align-items: center; justify-content: space-between; padding: 8px 24px 16px; }
+  .dir-a .day-nav-arrow { width: 40px; height: 40px; border-radius: 20px; border: none; background: #F5F0F4; color: #49454F; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .dir-a .day-nav-label { font-size: 14px; color: #49454F; font-weight: 500; }
+  .dir-a .card-area { padding: 0 16px; }
+  .dir-a .day-card { background: #FFFBFE; border-radius: 16px; padding: 20px; border: 1px solid #CAC4D0; }
+  .dir-a .slot { display: flex; align-items: center; padding: 16px; border-radius: 12px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; border: 1.5px solid transparent; }
+  .dir-a .slot:last-child { margin-bottom: 0; }
+  .dir-a .slot-empty { background: #EFEDF1; border-color: #CAC4D0; }
+  .dir-a .slot-filled { border-color: transparent; }
+  .dir-a .slot-current { border-color: #6750A4; background: #F3EEFF; }
+  .dir-a .slot-icon { width: 40px; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-right: 16px; flex-shrink: 0; }
+  .dir-a .slot-icon-empty { background: #E0DCE4; color: #79747E; }
+  .dir-a .slot-info { flex: 1; }
+  .dir-a .slot-label { font-size: 16px; font-weight: 500; color: #1C1B1F; }
+  .dir-a .slot-status { font-size: 13px; margin-top: 2px; }
+  .dir-a .slot-status-empty { color: #79747E; }
+  .dir-a .slot-severity-dot { width: 12px; height: 12px; border-radius: 6px; margin-right: 8px; display: inline-block; vertical-align: middle; }
+
+  /* Filled slot colors */
+  .bg-green { background: #E8F5E9; }
+  .bg-yellow { background: #FFF8E1; }
+  .bg-orange { background: #FFF3E0; }
+  .bg-red { background: #FFEBEE; }
+  .dot-green { background: #4CAF50; }
+  .dot-yellow { background: #FFC107; }
+  .dot-orange { background: #FF9800; }
+  .dot-red { background: #F44336; }
+  .icon-green { background: #4CAF50; color: #fff; }
+  .icon-yellow { background: #FFC107; color: #fff; }
+  .icon-orange { background: #FF9800; color: #fff; }
+  .icon-red { background: #F44336; color: #fff; }
+  .text-green { color: #2E7D32; }
+  .text-yellow { color: #F57F17; }
+  .text-orange { color: #E65100; }
+  .text-red { color: #C62828; }
+
+  /* =================== DIRECTION B: Minimal Tiles =================== */
+  .dir-b .top-bar { padding: 20px 24px 4px; text-align: center; }
+  .dir-b .date-header { font-size: 24px; font-weight: 400; color: #1C1B1F; }
+  .dir-b .date-sub { font-size: 13px; color: #49454F; margin-top: 4px; }
+  .dir-b .day-nav { display: flex; align-items: center; justify-content: center; gap: 32px; padding: 12px 24px 16px; }
+  .dir-b .day-nav-arrow { background: none; border: none; font-size: 20px; color: #79747E; cursor: pointer; padding: 8px; }
+  .dir-b .card-area { padding: 0 20px; }
+  .dir-b .slot-grid { display: flex; flex-direction: column; gap: 12px; }
+  .dir-b .slot { border-radius: 16px; padding: 20px; cursor: pointer; transition: all 0.15s; position: relative; min-height: 72px; display: flex; align-items: center; }
+  .dir-b .slot-empty { background: #F5F0F4; }
+  .dir-b .slot-current { background: #F3EEFF; outline: 2px solid #6750A4; outline-offset: -2px; }
+  .dir-b .slot-filled { }
+  .dir-b .slot-time { font-size: 14px; font-weight: 500; color: #1C1B1F; flex: 1; }
+  .dir-b .slot-severity { display: flex; align-items: center; gap: 8px; }
+  .dir-b .slot-severity-pill { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+  .dir-b .pill-green { background: #4CAF50; color: #fff; }
+  .dir-b .pill-yellow { background: #FFC107; color: #fff; }
+  .dir-b .pill-orange { background: #FF9800; color: #fff; }
+  .dir-b .pill-red { background: #F44336; color: #fff; }
+  .dir-b .slot-empty-indicator { font-size: 13px; color: #79747E; }
+  .dir-b .slot-chevron { color: #CAC4D0; font-size: 18px; margin-left: 8px; }
+
+  /* =================== DIRECTION C: Bold Color Blocks =================== */
+  .dir-c .top-bar { padding: 16px 24px 8px; }
+  .dir-c .date-header { font-size: 26px; font-weight: 400; color: #1C1B1F; }
+  .dir-c .date-sub { font-size: 13px; color: #49454F; margin-top: 2px; }
+  .dir-c .day-nav { display: flex; align-items: center; justify-content: space-between; padding: 8px 24px 20px; }
+  .dir-c .day-nav-arrow { width: 36px; height: 36px; border-radius: 18px; border: none; background: transparent; color: #49454F; font-size: 20px; cursor: pointer; }
+  .dir-c .day-nav-dots { display: flex; gap: 6px; }
+  .dir-c .day-dot { width: 8px; height: 8px; border-radius: 4px; background: #CAC4D0; }
+  .dir-c .day-dot.active { background: #6750A4; width: 24px; }
+  .dir-c .card-area { padding: 0 16px; }
+  .dir-c .slot-stack { display: flex; flex-direction: column; gap: 10px; }
+  .dir-c .slot { border-radius: 20px; padding: 18px 20px; cursor: pointer; display: flex; align-items: center; min-height: 80px; transition: all 0.15s; }
+  .dir-c .slot-empty { background: #F7F2F7; border: 2px dashed #CAC4D0; }
+  .dir-c .slot-current { background: #F3EEFF; border: 2px solid #6750A4; }
+  .dir-c .slot-filled-green { background: #4CAF50; }
+  .dir-c .slot-filled-yellow { background: #FFC107; }
+  .dir-c .slot-filled-orange { background: #FF9800; }
+  .dir-c .slot-filled-red { background: #F44336; }
+  .dir-c .slot-filled .slot-time, .dir-c .slot-filled .slot-severity-text { color: #fff; }
+  .dir-c .slot-time { font-size: 16px; font-weight: 500; flex: 1; color: #1C1B1F; }
+  .dir-c .slot-severity-text { font-size: 14px; font-weight: 500; }
+  .dir-c .slot-empty-text { color: #79747E; font-size: 13px; }
+  .dir-c .slot-filled .slot-icon-right { color: rgba(255,255,255,0.7); font-size: 20px; margin-left: 8px; }
+
+  /* =================== DIRECTION D: Segmented Strip =================== */
+  .dir-d .top-section { padding: 20px 24px 16px; text-align: center; }
+  .dir-d .date-header { font-size: 22px; font-weight: 400; color: #1C1B1F; }
+  .dir-d .date-sub { font-size: 13px; color: #49454F; margin-top: 4px; }
+  .dir-d .week-strip { display: flex; justify-content: center; gap: 6px; padding: 12px 16px 20px; }
+  .dir-d .week-day { width: 44px; height: 56px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #49454F; cursor: pointer; }
+  .dir-d .week-day span:first-child { font-size: 11px; font-weight: 500; color: #79747E; }
+  .dir-d .week-day span:last-child { font-size: 16px; font-weight: 400; margin-top: 2px; }
+  .dir-d .week-day.today { background: #6750A4; color: #fff; }
+  .dir-d .week-day.today span:first-child, .dir-d .week-day.today span:last-child { color: #fff; }
+  .dir-d .week-day.has-data { position: relative; }
+  .dir-d .week-day.has-data::after { content: ''; width: 6px; height: 6px; border-radius: 3px; background: #4CAF50; position: absolute; bottom: 4px; }
+  .dir-d .card-area { padding: 0 16px; }
+  .dir-d .day-card { background: #fff; border-radius: 20px; padding: 24px; border: 1px solid #E0DCE4; }
+  .dir-d .slot-row { display: flex; align-items: center; padding: 14px 0; border-bottom: 1px solid #F5F0F4; }
+  .dir-d .slot-row:last-child { border-bottom: none; }
+  .dir-d .slot-time-label { font-size: 14px; font-weight: 500; color: #1C1B1F; width: 100px; }
+  .dir-d .slot-bar { flex: 1; height: 36px; border-radius: 18px; display: flex; align-items: center; padding: 0 16px; }
+  .dir-d .slot-bar-empty { background: #EFEDF1; }
+  .dir-d .slot-bar-current { background: #F3EEFF; border: 1.5px solid #6750A4; }
+  .dir-d .slot-bar-green { background: #4CAF50; }
+  .dir-d .slot-bar-yellow { background: #FFC107; }
+  .dir-d .slot-bar-orange { background: #FF9800; }
+  .dir-d .slot-bar-red { background: #F44336; }
+  .dir-d .bar-text { font-size: 13px; font-weight: 500; }
+  .dir-d .bar-text-empty { color: #79747E; }
+  .dir-d .bar-text-filled { color: #fff; }
+
+  /* =================== DIRECTION E: Card Stack with Timeline =================== */
+  .dir-e .top-bar { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .dir-e .date-header { font-size: 22px; font-weight: 400; color: #1C1B1F; }
+  .dir-e .nav-arrows { display: flex; gap: 8px; }
+  .dir-e .nav-arrow-btn { width: 36px; height: 36px; border-radius: 18px; border: 1.5px solid #CAC4D0; background: transparent; color: #49454F; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .dir-e .progress-bar { margin: 0 24px 16px; height: 4px; background: #EFEDF1; border-radius: 2px; display: flex; overflow: hidden; gap: 3px; }
+  .dir-e .progress-segment { flex: 1; border-radius: 2px; }
+  .dir-e .progress-empty { background: #EFEDF1; }
+  .dir-e .card-area { padding: 0 16px; }
+  .dir-e .timeline { position: relative; padding-left: 28px; }
+  .dir-e .timeline::before { content: ''; position: absolute; left: 10px; top: 12px; bottom: 12px; width: 2px; background: #E0DCE4; }
+  .dir-e .timeline-item { position: relative; margin-bottom: 16px; }
+  .dir-e .timeline-item:last-child { margin-bottom: 0; }
+  .dir-e .timeline-dot { position: absolute; left: -22px; top: 20px; width: 12px; height: 12px; border-radius: 6px; border: 2px solid #fff; z-index: 1; }
+  .dir-e .timeline-dot-empty { background: #CAC4D0; }
+  .dir-e .timeline-dot-current { background: #6750A4; box-shadow: 0 0 0 4px #E8DEF8; }
+  .dir-e .slot-card { background: #fff; border-radius: 16px; padding: 16px 20px; border: 1px solid #E0DCE4; display: flex; align-items: center; cursor: pointer; transition: all 0.15s; }
+  .dir-e .slot-card-current { border-color: #6750A4; background: #FAFAFF; }
+  .dir-e .slot-card-filled { }
+  .dir-e .slot-time { font-size: 14px; font-weight: 500; color: #1C1B1F; flex: 1; }
+  .dir-e .slot-time-range { font-size: 11px; color: #79747E; display: block; margin-top: 2px; }
+  .dir-e .severity-badge { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .dir-e .badge-empty { background: #F5F0F4; color: #CAC4D0; border: 1.5px dashed #CAC4D0; }
+  .dir-e .badge-green { background: #E8F5E9; color: #4CAF50; }
+  .dir-e .badge-yellow { background: #FFF8E1; color: #FFC107; }
+  .dir-e .badge-orange { background: #FFF3E0; color: #FF9800; }
+  .dir-e .badge-red { background: #FFEBEE; color: #F44336; }
+
+  /* =================== DIRECTION F: Expanded Picker Preview =================== */
+  .dir-f .top-bar { padding: 16px 24px 8px; }
+  .dir-f .date-header { font-size: 28px; font-weight: 400; color: #1C1B1F; }
+  .dir-f .date-sub { font-size: 14px; color: #49454F; margin-top: 2px; }
+  .dir-f .card-area { padding: 16px; }
+  .dir-f .day-card { background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #E0DCE4; }
+  .dir-f .slot { padding: 14px 0; border-bottom: 1px solid #F5F0F4; }
+  .dir-f .slot:last-child { border-bottom: none; }
+  .dir-f .slot-header { display: flex; align-items: center; cursor: pointer; }
+  .dir-f .slot-label { font-size: 16px; font-weight: 500; color: #1C1B1F; flex: 1; }
+  .dir-f .slot-indicator { width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .dir-f .indicator-empty { background: #EFEDF1; color: #79747E; }
+  /* Expanded picker */
+  .dir-f .picker-expanded { margin-top: 12px; display: flex; gap: 10px; padding: 12px; background: #F7F2F7; border-radius: 14px; align-items: center; }
+  .dir-f .picker-option { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 4px; border-radius: 12px; cursor: pointer; transition: all 0.15s; }
+  .dir-f .picker-option:hover { background: rgba(0,0,0,0.04); }
+  .dir-f .picker-option.selected { outline: 2.5px solid #1C1B1F; outline-offset: 2px; }
+  .dir-f .picker-circle { width: 40px; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+  .dir-f .picker-label { font-size: 11px; font-weight: 500; text-align: center; }
+  .dir-f .picker-dismiss { width: 32px; height: 32px; border-radius: 16px; background: #E0DCE4; border: none; color: #49454F; font-size: 16px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+
+  /* Comparison panel */
+  .comparison-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 32px; max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+  .comparison-card { background: #fff; border-radius: 20px; padding: 24px; text-align: center; border: 1px solid #E0DCE4; }
+  .comparison-card h3 { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+  .comparison-card .comp-desc { font-size: 13px; color: #49454F; margin-bottom: 16px; }
+  .comparison-card .mini-phone { width: 200px; height: 400px; margin: 0 auto; background: #FFFBFE; border-radius: 20px; border: 2px solid #1C1B1F; overflow: hidden; transform: scale(0.95); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>HealthTrend — Design Direction Mockups</h1>
+  <p>Explore 6 design directions for the Day Card experience. Each shows the same data with a different visual approach. Open this file in a browser to interact.</p>
+</div>
+
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="showPanel('a')">A: Clean Cards</button>
+  <button class="tab-btn" onclick="showPanel('b')">B: Minimal Tiles</button>
+  <button class="tab-btn" onclick="showPanel('c')">C: Bold Color Blocks</button>
+  <button class="tab-btn" onclick="showPanel('d')">D: Week Strip + Bars</button>
+  <button class="tab-btn" onclick="showPanel('e')">E: Timeline Cards</button>
+  <button class="tab-btn" onclick="showPanel('f')">F: Inline Picker Preview</button>
+  <button class="tab-btn" onclick="showPanel('compare')">Compare All</button>
+</div>
+
+<!-- =================== DIRECTION A: Clean Cards =================== -->
+<div id="panel-a" class="panel active">
+  <div class="direction-info">
+    <h2>Direction A: Clean Cards</h2>
+    <p>The most straightforward Material 3 approach. A single card contains all four slots with clear separation. Filled slots use soft background tints with colored indicator dots. Feels like a polished form — functional and familiar.</p>
+    <span class="tag">Most Material 3</span>
+    <span class="tag">Familiar</span>
+    <span class="tag">Form-like</span>
+  </div>
+  <div class="mockup-row">
+    <div class="mockup-col">
+      <span class="mockup-label">Partially filled (Afternoon current)</span>
+      <div class="phone-frame">
+        <div class="phone-status-bar"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="phone-content dir-a">
+          <div class="top-bar">
+            <div class="date-header">Today</div>
+            <div class="date-sub">Thursday, February 6, 2026</div>
+          </div>
+          <div class="day-nav">
+            <button class="day-nav-arrow">‹</button>
+            <span class="day-nav-label">Feb 6</span>
+            <button class="day-nav-arrow">›</button>
+          </div>
+          <div class="card-area">
+            <div class="day-card">
+              <div class="slot slot-filled bg-green">
+                <div class="slot-icon icon-green">✓</div>
+                <div class="slot-info">
+                  <div class="slot-label">Morning</div>
+                  <div class="slot-status text-green"><span class="slot-severity-dot dot-green"></span>No Pain</div>
+                </div>
+              </div>
+              <div class="slot slot-current">
+                <div class="slot-icon slot-icon-empty">☀</div>
+                <div class="slot-info">
+                  <div class="slot-label">Afternoon</div>
+                  <div class="slot-status slot-status-empty">Tap to log</div>
+                </div>
+              </div>
+              <div class="slot slot-empty">
+                <div class="slot-icon slot-icon-empty">🌙</div>
+                <div class="slot-info">
+                  <div class="slot-label">Evening</div>
+                  <div class="slot-status slot-status-empty">Not logged</div>
+                </div>
+              </div>
+              <div class="slot slot-empty">
+                <div class="slot-icon slot-icon-empty">★</div>
+                <div class="slot-info">
+                  <div class="slot-label">Night</div>
+                  <div class="slot-status slot-status-empty">Not logged</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="nav-item active"><div class="nav-icon" style="background:#E8DEF8;display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:16px;font-size:14px;">📋</div><span class="nav-label" style="color:#6750A4;">Today</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">📊</div><span class="nav-label">Analytics</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</div><span class="nav-label">Settings</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-col">
+      <span class="mockup-label">Fully completed day</span>
+      <div class="phone-frame">
+        <div class="phone-status-bar"><span>9:41</span><span>📶 🔋</span></div>
+        <div class="phone-content dir-a">
+          <div class="top-bar">
+            <div class="date-header">Today</div>
+            <div class="date-sub">Thursday, February 6, 2026</div>
+          </div>
+          <div class="day-nav">
+            <button class="day-nav-arrow">‹</button>
+            <span class="day-nav-label">Feb 6</span>
+            <button class="day-nav-arrow">›</button>
+          </div>
+          <div class="card-area">
+            <div class="day-card">
+              <div class="slot slot-filled bg-green">
+                <div class="slot-icon icon-green">✓</div>
+                <div class="slot-info"><div class="slot-label">Morning</div><div class="slot-status text-green"><span class="slot-severity-dot dot-green"></span>No Pain</div></div>
+              </div>
+              <div class="slot slot-filled bg-yellow">
+                <div class="slot-icon icon-yellow">~</div>
+                <div class="slot-info"><div class="slot-label">Afternoon</div><div class="slot-status text-yellow"><span class="slot-severity-dot dot-yellow"></span>Mild</div></div>
+              </div>
+              <div class="slot slot-filled bg-orange">
+                <div class="slot-icon icon-orange">!</div>
+                <div class="slot-info"><div class="slot-label">Evening</div><div class="slot-status text-orange"><span class="slot-severity-dot dot-orange"></span>Moderate</div></div>
+              </div>
+              <div class="slot slot-filled bg-green">
+                <div class="slot-icon icon-green">✓</div>
+                <div class="slot-info"><div class="slot-label">Night</div><div class="slot-status text-green"><span class="slot-severity-dot dot-green"></span>No Pain</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="nav-item active"><div class="nav-icon" style="background:#E8DEF8;display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:16px;font-size:14px;">📋</div><span class="nav-label" style="color:#6750A4;">Today</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">📊</div><span class="nav-label">Analytics</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</div><span class="nav-label">Settings</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== DIRECTION B: Minimal Tiles =================== -->
+<div id="panel-b" class="panel">
+  <div class="direction-info">
+    <h2>Direction B: Minimal Tiles</h2>
+    <p>Ultra-clean with separated tile rows. Each time slot is its own standalone surface. Severity is shown as a compact color pill badge on the right. Maximum breathing room between elements. The most "stock Android" feel.</p>
+    <span class="tag">Ultra Minimal</span>
+    <span class="tag">Spacious</span>
+    <span class="tag">Stock Android</span>
+  </div>
+  <div class="mockup-row">
+    <div class="mockup-col">
+      <span class="mockup-label">Partially filled (Afternoon current)</span>
+      <div class="phone-frame">
+        <div class="phone-status-bar"><span>2:15 PM</span><span>📶 🔋</span></div>
+        <div class="phone-content dir-b">
+          <div class="top-bar">
+            <div class="date-header">February 6, 2026</div>
+            <div class="date-sub">Thursday — Today</div>
+          </div>
+          <div class="day-nav">
+            <button class="day-nav-arrow">‹</button>
+            <span style="font-size:14px;color:#49454F;">Today</span>
+            <button class="day-nav-arrow">›</button>
+          </div>
+          <div class="card-area">
+            <div class="slot-grid">
+              <div class="slot bg-green" style="border-radius:16px;">
+                <span class="slot-time">Morning</span>
+                <div class="slot-severity"><span class="slot-severity-pill pill-green">No Pain</span></div>
+              </div>
+              <div class="slot slot-current">
+                <span class="slot-time">Afternoon</span>
+                <span class="slot-empty-indicator">Tap to log</span>
+                <span class="slot-chevron">›</span>
+              </div>
+              <div class="slot slot-empty">
+                <span class="slot-time">Evening</span>
+                <span class="slot-empty-indicator">—</span>
+              </div>
+              <div class="slot slot-empty">
+                <span class="slot-time">Night</span>
+                <span class="slot-empty-indicator">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="nav-item active"><div class="nav-icon" style="background:#E8DEF8;display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:16px;font-size:14px;">📋</div><span class="nav-label" style="color:#6750A4;">Today</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">📊</div><span class="nav-label">Analytics</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</div><span class="nav-label">Settings</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-col">
+      <span class="mockup-label">Fully completed day</span>
+      <div class="phone-frame">
+        <div class="phone-status-bar"><span>10:30 PM</span><span>📶 🔋</span></div>
+        <div class="phone-content dir-b">
+          <div class="top-bar">
+            <div class="date-header">February 6, 2026</div>
+            <div class="date-sub">Thursday — Today</div>
+          </div>
+          <div class="day-nav">
+            <button class="day-nav-arrow">‹</button>
+            <span style="font-size:14px;color:#49454F;">Today</span>
+            <button class="day-nav-arrow">›</button>
+          </div>
+          <div class="card-area">
+            <div class="slot-grid">
+              <div class="slot bg-green" style="border-radius:16px;">
+                <span class="slot-time">Morning</span>
+                <div class="slot-severity"><span class="slot-severity-pill pill-green">No Pain</span></div>
+              </div>
+              <div class="slot bg-yellow" style="border-radius:16px;">
+                <span class="slot-time">Afternoon</span>
+                <div class="slot-severity"><span class="slot-severity-pill pill-yellow">Mild</span></div>
+              </div>
+              <div class="slot bg-orange" style="border-radius:16px;">
+                <span class="slot-time">Evening</span>
+                <div class="slot-severity"><span class="slot-severity-pill pill-orange">Moderate</span></div>
+              </div>
+              <div class="slot bg-green" style="border-radius:16px;">
+                <span class="slot-time">Night</span>
+                <div class="slot-severity"><span class="slot-severity-pill pill-green">No Pain</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="nav-item active"><div class="nav-icon" style="background:#E8DEF8;display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:16px;font-size:14px;">📋</div><span class="nav-label" style="color:#6750A4;">Today</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">📊</div><span class="nav-label">Analytics</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</div><span class="nav-label">Settings</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== DIRECTION C: Bold Color Blocks =================== -->
+<div id="panel-c" class="panel">
+  <div class="direction-info">
+    <h2>Direction C: Bold Color Blocks</h2>
+    <p>Filled slots become full-color blocks — the severity color takes over the entire slot surface. Empty slots use dashed borders. High visual impact: you can read the day's pattern from across the room. Bold and confident.</p>
+    <span class="tag">High Impact</span>
+    <span class="tag">Color-Forward</span>
+    <span class="tag">Glanceable</span>
+  </div>
+  <div class="mockup-row">
+    <div class="mockup-col">
+      <span class="mockup-label">Partially filled</span>
+      <div class="phone-frame">
+        <div class="phone-status-bar"><span>2:15 PM</span><span>📶 🔋</span></div>
+        <div class="phone-content dir-c">
+          <div class="top-bar">
+            <div class="date-header">Thursday, Feb 6</div>
+            <div class="date-sub">Today</div>
+          </div>
+          <div class="day-nav">
+            <button class="day-nav-arrow">‹</button>
+            <div class="day-nav-dots"><div class="day-dot"></div><div class="day-dot"></div><div class="day-dot active"></div><div class="day-dot"></div><div class="day-dot"></div></div>
+            <button class="day-nav-arrow">›</button>
+          </div>
+          <div class="card-area">
+            <div class="slot-stack">
+              <div class="slot slot-filled slot-filled-green">
+                <span class="slot-time" style="color:#fff;">Morning</span>
+                <span class="slot-severity-text" style="color:#fff;">No Pain</span>
+                <span class="slot-icon-right" style="color:rgba(255,255,255,0.7);">✓</span>
+              </div>
+              <div class="slot slot-current">
+                <span class="slot-time">Afternoon</span>
+                <span class="slot-empty-text">Tap to log</span>
+              </div>
+              <div class="slot slot-empty">
+                <span class="slot-time" style="color:#79747E;">Evening</span>
+              </div>
+              <div class="slot slot-empty">
+                <span class="slot-time" style="color:#79747E;">Night</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="nav-item active"><div class="nav-icon" style="background:#E8DEF8;display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:16px;font-size:14px;">📋</div><span class="nav-label" style="color:#6750A4;">Today</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">📊</div><span class="nav-label">Analytics</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</div><span class="nav-label">Settings</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-col">
+      <span class="mockup-label">Fully completed day</span>
+      <div class="phone-frame">
+        <div class="phone-status-bar"><span>10:30 PM</span><span>📶 🔋</span></div>
+        <div class="phone-content dir-c">
+          <div class="top-bar">
+            <div class="date-header">Thursday, Feb 6</div>
+            <div class="date-sub">Today</div>
+          </div>
+          <div class="day-nav">
+            <button class="day-nav-arrow">‹</button>
+            <div class="day-nav-dots"><div class="day-dot"></div><div class="day-dot"></div><div class="day-dot active"></div><div class="day-dot"></div><div class="day-dot"></div></div>
+            <button class="day-nav-arrow">›</button>
+          </div>
+          <div class="card-area">
+            <div class="slot-stack">
+              <div class="slot slot-filled slot-filled-green"><span class="slot-time" style="color:#fff;">Morning</span><span class="slot-severity-text" style="color:#fff;">No Pain</span><span style="color:rgba(255,255,255,0.7);font-size:20px;margin-left:8px;">✓</span></div>
+              <div class="slot slot-filled slot-filled-yellow"><span class="slot-time" style="color:#fff;">Afternoon</span><span class="slot-severity-text" style="color:#fff;">Mild</span><span style="color:rgba(255,255,255,0.7);font-size:20px;margin-left:8px;">~</span></div>
+              <div class="slot slot-filled slot-filled-orange"><span class="slot-time" style="color:#fff;">Evening</span><span class="slot-severity-text" style="color:#fff;">Moderate</span><span style="color:rgba(255,255,255,0.7);font-size:20px;margin-left:8px;">!</span></div>
+              <div class="slot slot-filled slot-filled-green"><span class="slot-time" style="color:#fff;">Night</span><span class="slot-severity-text" style="color:#fff;">No Pain</span><span style="color:rgba(255,255,255,0.7);font-size:20px;margin-left:8px;">✓</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="nav-item active"><div class="nav-icon" style="background:#E8DEF8;display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:16px;font-size:14px;">📋</div><span class="nav-label" style="color:#6750A4;">Today</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">📊</div><span class="nav-label">Analytics</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</div><span class="nav-label">Settings</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== DIRECTION D: Week Strip + Bars =================== -->
+<div id="panel-d" class="panel">
+  <div class="direction-info">
+    <h2>Direction D: Week Strip + Horizontal Bars</h2>
+    <p>Adds a week-at-a-glance strip at the top for quick day navigation. Time slots are horizontal bars that fill with color. Green dots on the week strip show which days have data. Great for users who check multiple days.</p>
+    <span class="tag">Week Context</span>
+    <span class="tag">Horizontal Bars</span>
+    <span class="tag">Multi-day Aware</span>
+  </div>
+  <div class="mockup-row">
+    <div class="mockup-col">
+      <span class="mockup-label">Partially filled with week context</span>
+      <div class="phone-frame">
+        <div class="phone-status-bar"><span>2:15 PM</span><span>📶 🔋</span></div>
+        <div class="phone-content dir-d">
+          <div class="top-section">
+            <div class="date-header">February 6, 2026</div>
+            <div class="date-sub">Thursday</div>
+          </div>
+          <div class="week-strip">
+            <div class="week-day has-data"><span>Mon</span><span>3</span></div>
+            <div class="week-day has-data"><span>Tue</span><span>4</span></div>
+            <div class="week-day has-data"><span>Wed</span><span>5</span></div>
+            <div class="week-day today"><span>Thu</span><span>6</span></div>
+            <div class="week-day"><span>Fri</span><span>7</span></div>
+            <div class="week-day"><span>Sat</span><span>8</span></div>
+            <div class="week-day"><span>Sun</span><span>9</span></div>
+          </div>
+          <div class="card-area">
+            <div class="day-card">
+              <div class="slot-row">
+                <span class="slot-time-label">Morning</span>
+                <div class="slot-bar slot-bar-green"><span class="bar-text bar-text-filled">No Pain</span></div>
+              </div>
+              <div class="slot-row">
+                <span class="slot-time-label">Afternoon</span>
+                <div class="slot-bar slot-bar-current"><span class="bar-text bar-text-empty">Tap to log</span></div>
+              </div>
+              <div class="slot-row">
+                <span class="slot-time-label">Evening</span>
+                <div class="slot-bar slot-bar-empty"><span class="bar-text bar-text-empty">—</span></div>
+              </div>
+              <div class="slot-row">
+                <span class="slot-time-label">Night</span>
+                <div class="slot-bar slot-bar-empty"><span class="bar-text bar-text-empty">—</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="nav-item active"><div class="nav-icon" style="background:#E8DEF8;display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:16px;font-size:14px;">📋</div><span class="nav-label" style="color:#6750A4;">Today</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">📊</div><span class="nav-label">Analytics</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</div><span class="nav-label">Settings</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== DIRECTION E: Timeline Cards =================== -->
+<div id="panel-e" class="panel">
+  <div class="direction-info">
+    <h2>Direction E: Timeline Cards</h2>
+    <p>Slots are arranged as individual cards along a vertical timeline. A progress bar at the top shows how many slots are filled. Each card has a severity badge on the right. Feels like a personal journal or activity feed.</p>
+    <span class="tag">Timeline</span>
+    <span class="tag">Progress Tracking</span>
+    <span class="tag">Journal-like</span>
+  </div>
+  <div class="mockup-row">
+    <div class="mockup-col">
+      <span class="mockup-label">Partially filled with timeline</span>
+      <div class="phone-frame">
+        <div class="phone-status-bar"><span>2:15 PM</span><span>📶 🔋</span></div>
+        <div class="phone-content dir-e">
+          <div class="top-bar">
+            <div class="date-header">Thu, Feb 6</div>
+            <div class="nav-arrows"><button class="nav-arrow-btn">‹</button><button class="nav-arrow-btn">›</button></div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-segment" style="background:#4CAF50;"></div>
+            <div class="progress-segment progress-empty"></div>
+            <div class="progress-segment progress-empty"></div>
+            <div class="progress-segment progress-empty"></div>
+          </div>
+          <div class="card-area">
+            <div class="timeline">
+              <div class="timeline-item">
+                <div class="timeline-dot" style="background:#4CAF50;"></div>
+                <div class="slot-card slot-card-filled" style="border-left:3px solid #4CAF50;">
+                  <div style="flex:1;"><span class="slot-time">Morning<span class="slot-time-range">6:00 AM – 12:00 PM</span></span></div>
+                  <div class="severity-badge badge-green">✓</div>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot timeline-dot-current"></div>
+                <div class="slot-card slot-card-current">
+                  <div style="flex:1;"><span class="slot-time">Afternoon<span class="slot-time-range">12:00 PM – 5:00 PM</span></span></div>
+                  <div class="severity-badge badge-empty">+</div>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot timeline-dot-empty"></div>
+                <div class="slot-card">
+                  <div style="flex:1;"><span class="slot-time">Evening<span class="slot-time-range">5:00 PM – 9:00 PM</span></span></div>
+                  <div class="severity-badge badge-empty">—</div>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot timeline-dot-empty"></div>
+                <div class="slot-card">
+                  <div style="flex:1;"><span class="slot-time">Night<span class="slot-time-range">9:00 PM – 6:00 AM</span></span></div>
+                  <div class="severity-badge badge-empty">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="nav-item active"><div class="nav-icon" style="background:#E8DEF8;display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:16px;font-size:14px;">📋</div><span class="nav-label" style="color:#6750A4;">Today</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">📊</div><span class="nav-label">Analytics</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</div><span class="nav-label">Settings</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== DIRECTION F: Inline Picker Preview =================== -->
+<div id="panel-f" class="panel">
+  <div class="direction-info">
+    <h2>Direction F: Inline Picker Preview</h2>
+    <p>Shows what the inline severity picker looks like when expanded. This is the interaction state — the Afternoon slot is open for selection. Note the four color options, the dismiss button, and how the current selection (orange) is highlighted. This is the core "two-tap" moment.</p>
+    <span class="tag">Picker Interaction</span>
+    <span class="tag">Core UX Moment</span>
+    <span class="tag">Inline Expansion</span>
+  </div>
+  <div class="mockup-row">
+    <div class="mockup-col">
+      <span class="mockup-label">Severity picker expanded (editing Afternoon)</span>
+      <div class="phone-frame">
+        <div class="phone-status-bar"><span>2:15 PM</span><span>📶 🔋</span></div>
+        <div class="phone-content dir-f">
+          <div class="top-bar">
+            <div class="date-header">Today</div>
+            <div class="date-sub">Thursday, February 6, 2026</div>
+          </div>
+          <div class="card-area">
+            <div class="day-card">
+              <!-- Morning: filled -->
+              <div class="slot">
+                <div class="slot-header">
+                  <span class="slot-label">Morning</span>
+                  <div class="slot-indicator icon-green" style="font-size:14px;">✓</div>
+                </div>
+              </div>
+              <!-- Afternoon: picker expanded -->
+              <div class="slot" style="background:#F7F2F7;border-radius:12px;margin:0 -8px;padding:14px 8px;">
+                <div class="slot-header" style="margin-bottom:0;">
+                  <span class="slot-label" style="color:#6750A4;">Afternoon</span>
+                  <span style="font-size:12px;color:#6750A4;font-weight:500;">Select severity</span>
+                </div>
+                <div class="picker-expanded">
+                  <div class="picker-option">
+                    <div class="picker-circle" style="background:#4CAF50;">✓</div>
+                    <span class="picker-label text-green">No Pain</span>
+                  </div>
+                  <div class="picker-option">
+                    <div class="picker-circle" style="background:#FFC107;">~</div>
+                    <span class="picker-label text-yellow">Mild</span>
+                  </div>
+                  <div class="picker-option selected">
+                    <div class="picker-circle" style="background:#FF9800;">!</div>
+                    <span class="picker-label text-orange">Moderate</span>
+                  </div>
+                  <div class="picker-option">
+                    <div class="picker-circle" style="background:#F44336;">!!</div>
+                    <span class="picker-label text-red">Severe</span>
+                  </div>
+                  <button class="picker-dismiss">✕</button>
+                </div>
+              </div>
+              <!-- Evening: empty -->
+              <div class="slot" style="opacity:0.5;">
+                <div class="slot-header">
+                  <span class="slot-label">Evening</span>
+                  <div class="slot-indicator indicator-empty">—</div>
+                </div>
+              </div>
+              <!-- Night: empty -->
+              <div class="slot" style="opacity:0.5;">
+                <div class="slot-header">
+                  <span class="slot-label">Night</span>
+                  <div class="slot-indicator indicator-empty">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="nav-item active"><div class="nav-icon" style="background:#E8DEF8;display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:16px;font-size:14px;">📋</div><span class="nav-label" style="color:#6750A4;">Today</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">📊</div><span class="nav-label">Analytics</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</div><span class="nav-label">Settings</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup-col">
+      <span class="mockup-label">After selection — picker collapsed</span>
+      <div class="phone-frame">
+        <div class="phone-status-bar"><span>2:15 PM</span><span>📶 🔋</span></div>
+        <div class="phone-content dir-f">
+          <div class="top-bar">
+            <div class="date-header">Today</div>
+            <div class="date-sub">Thursday, February 6, 2026</div>
+          </div>
+          <div class="card-area">
+            <div class="day-card">
+              <div class="slot">
+                <div class="slot-header">
+                  <span class="slot-label">Morning</span>
+                  <div class="slot-indicator icon-green" style="font-size:14px;">✓</div>
+                </div>
+              </div>
+              <div class="slot" style="background:#FFF3E0;border-radius:12px;margin:0 -8px;padding:14px 8px;">
+                <div class="slot-header">
+                  <span class="slot-label">Afternoon</span>
+                  <div class="slot-indicator icon-orange" style="font-size:14px;">!</div>
+                </div>
+              </div>
+              <div class="slot">
+                <div class="slot-header">
+                  <span class="slot-label">Evening</span>
+                  <div class="slot-indicator indicator-empty">—</div>
+                </div>
+              </div>
+              <div class="slot">
+                <div class="slot-header">
+                  <span class="slot-label">Night</span>
+                  <div class="slot-indicator indicator-empty">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bottom-nav">
+          <div class="nav-item active"><div class="nav-icon" style="background:#E8DEF8;display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:16px;font-size:14px;">📋</div><span class="nav-label" style="color:#6750A4;">Today</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">📊</div><span class="nav-label">Analytics</span></div>
+          <div class="nav-item"><div class="nav-icon" style="font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</div><span class="nav-label">Settings</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== COMPARE ALL =================== -->
+<div id="panel-compare" class="panel">
+  <div class="direction-info">
+    <h2>Compare All Directions</h2>
+    <p>Quick summary of each direction's strengths. Click the tabs above to see full mockups.</p>
+  </div>
+  <div class="comparison-grid">
+    <div class="comparison-card">
+      <h3>A: Clean Cards</h3>
+      <p class="comp-desc">Classic Material 3 card layout. Soft tinted backgrounds on filled slots. Icon + label + severity dot. The most conventional and safe choice.</p>
+      <div style="display:flex;gap:4px;justify-content:center;margin-top:12px;">
+        <div style="width:48px;height:20px;border-radius:4px;background:#E8F5E9;"></div>
+        <div style="width:48px;height:20px;border-radius:4px;background:#EFEDF1;"></div>
+        <div style="width:48px;height:20px;border-radius:4px;background:#EFEDF1;"></div>
+        <div style="width:48px;height:20px;border-radius:4px;background:#EFEDF1;"></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#49454F;">Best for: Maximum familiarity</div>
+    </div>
+    <div class="comparison-card">
+      <h3>B: Minimal Tiles</h3>
+      <p class="comp-desc">Separated tiles with pill badges. Maximum whitespace. Ultra-clean and stock Android feeling. The least visual "noise."</p>
+      <div style="display:flex;gap:4px;justify-content:center;margin-top:12px;">
+        <div style="width:48px;height:20px;border-radius:10px;background:#4CAF50;"></div>
+        <div style="width:48px;height:20px;border-radius:10px;background:#F5F0F4;"></div>
+        <div style="width:48px;height:20px;border-radius:10px;background:#F5F0F4;"></div>
+        <div style="width:48px;height:20px;border-radius:10px;background:#F5F0F4;"></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#49454F;">Best for: Simplicity purists</div>
+    </div>
+    <div class="comparison-card">
+      <h3>C: Bold Color Blocks</h3>
+      <p class="comp-desc">Full-color filled slots. High visual impact — you can read the day from across the room. Dashed borders on empty slots. Most dramatic.</p>
+      <div style="display:flex;gap:4px;justify-content:center;margin-top:12px;">
+        <div style="width:48px;height:20px;border-radius:4px;background:#4CAF50;"></div>
+        <div style="width:48px;height:20px;border-radius:4px;background:#FFC107;"></div>
+        <div style="width:48px;height:20px;border-radius:4px;border:1.5px dashed #CAC4D0;"></div>
+        <div style="width:48px;height:20px;border-radius:4px;border:1.5px dashed #CAC4D0;"></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#49454F;">Best for: At-a-glance readability</div>
+    </div>
+    <div class="comparison-card">
+      <h3>D: Week Strip + Bars</h3>
+      <p class="comp-desc">Week calendar at top for day navigation. Horizontal color bars. Green dots show logged days. Best for users who browse multiple days.</p>
+      <div style="display:flex;gap:2px;justify-content:center;margin-top:12px;">
+        <div style="width:24px;height:24px;border-radius:6px;background:#EFEDF1;font-size:9px;display:flex;align-items:center;justify-content:center;">M</div>
+        <div style="width:24px;height:24px;border-radius:6px;background:#EFEDF1;font-size:9px;display:flex;align-items:center;justify-content:center;">T</div>
+        <div style="width:24px;height:24px;border-radius:6px;background:#EFEDF1;font-size:9px;display:flex;align-items:center;justify-content:center;">W</div>
+        <div style="width:24px;height:24px;border-radius:6px;background:#6750A4;color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;">T</div>
+        <div style="width:24px;height:24px;border-radius:6px;background:#EFEDF1;font-size:9px;display:flex;align-items:center;justify-content:center;">F</div>
+        <div style="width:24px;height:24px;border-radius:6px;background:#EFEDF1;font-size:9px;display:flex;align-items:center;justify-content:center;">S</div>
+        <div style="width:24px;height:24px;border-radius:6px;background:#EFEDF1;font-size:9px;display:flex;align-items:center;justify-content:center;">S</div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#49454F;">Best for: Week-level awareness</div>
+    </div>
+    <div class="comparison-card">
+      <h3>E: Timeline Cards</h3>
+      <p class="comp-desc">Vertical timeline with individual cards. Progress bar at top. Time ranges shown. Feels like a personal health journal.</p>
+      <div style="display:flex;gap:4px;align-items:center;justify-content:center;margin-top:12px;">
+        <div style="width:8px;height:8px;border-radius:4px;background:#4CAF50;"></div>
+        <div style="width:30px;height:2px;background:#E0DCE4;"></div>
+        <div style="width:8px;height:8px;border-radius:4px;background:#6750A4;"></div>
+        <div style="width:30px;height:2px;background:#E0DCE4;"></div>
+        <div style="width:8px;height:8px;border-radius:4px;background:#CAC4D0;"></div>
+        <div style="width:30px;height:2px;background:#E0DCE4;"></div>
+        <div style="width:8px;height:8px;border-radius:4px;background:#CAC4D0;"></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#49454F;">Best for: Chronological awareness</div>
+    </div>
+    <div class="comparison-card">
+      <h3>F: Inline Picker</h3>
+      <p class="comp-desc">Shows the core interaction: the severity picker expanding inline within a slot. Four color circles + dismiss button. This is the "two-tap moment."</p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+        <div style="width:28px;height:28px;border-radius:14px;background:#4CAF50;"></div>
+        <div style="width:28px;height:28px;border-radius:14px;background:#FFC107;"></div>
+        <div style="width:28px;height:28px;border-radius:14px;background:#FF9800;outline:2px solid #1C1B1F;outline-offset:2px;"></div>
+        <div style="width:28px;height:28px;border-radius:14px;background:#F44336;"></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#49454F;">Best for: Understanding the core interaction</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

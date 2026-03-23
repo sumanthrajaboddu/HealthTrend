@@ -1,0 +1,58 @@
+name: Build Debug APK
+
+on:
+  workflow_dispatch: # Manual trigger from GitHub Actions tab
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Android SDK components
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.0" "platforms;android-35"
+
+      - name: Download and setup Gradle
+        run: |
+          GRADLE_URL=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed 's/.*=//;s/\\//g')
+          echo "Downloading Gradle from: $GRADLE_URL"
+          wget -q "$GRADLE_URL" -O /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /opt/gradle
+          GRADLE_DIR=$(ls /opt/gradle/)
+          echo "/opt/gradle/$GRADLE_DIR/bin" >> $GITHUB_PATH
+          echo "GRADLE_HOME=/opt/gradle/$GRADLE_DIR" >> $GITHUB_ENV
+
+      - name: Build Debug APK
+        run: gradle assembleDebug
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HealthTrend-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      - name: Run Unit Tests
+        run: gradle testDebugUnitTest
+        continue-on-error: true
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 7
+          if-no-files-found: ignore
